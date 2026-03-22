@@ -4,13 +4,14 @@ Personal dashboard app. React + Vite client, Express + node:sqlite server.
 
 ## After every change
 
-Run the test suite before considering a task done:
+1. **Determine if new tests are needed.** Ask: does this change add a new API endpoint, alter existing endpoint behavior, or introduce new server-side logic? If yes, add tests for it in `server/src/tests/`.
+2. **Run the full suite.** All tests must pass before the task is done:
 
 ```
 npm test
 ```
 
-All 13 tests must pass. If any fail, fix them before finishing.
+If any tests fail, fix them before finishing. Update the test count in this file when tests are added.
 
 ## Dev server
 
