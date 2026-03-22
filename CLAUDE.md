@@ -2,10 +2,14 @@
 
 Personal dashboard app. React + Vite client, Express + node:sqlite server.
 
+## Git
+Do NOT commit or push to the repository unless the user explicitly asks you to.
+
 ## After every change
 
 1. **Determine if new tests are needed.** Ask: does this change add a new API endpoint, alter existing endpoint behavior, or introduce new server-side logic? If yes, add tests for it in `server/src/tests/`.
-2. **Run the full suite.** All tests must pass before the task is done:
+2. **Remove tests that are no longer needed.** If a change removes a feature or makes an existing test irrelevant, delete that test.
+3. **Run the full suite.** All tests must pass before the task is done:
 
 ```
 npm test

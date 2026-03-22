@@ -26,7 +26,7 @@ router.get('/sts2/ascensions', (_req: Request, res: Response) => {
     return
   }
 
-  let data: { character_stats?: { id: string; max_ascension: number; preferred_ascension: number }[] }
+  let data: { character_stats?: { id: string; max_ascension: number; preferred_ascension: number; total_wins?: number; total_losses?: number }[] }
   try {
     data = JSON.parse(raw)
   } catch {
@@ -41,6 +41,8 @@ router.get('/sts2/ascensions', (_req: Request, res: Response) => {
       name: CHARACTER_NAMES[c.id],
       max_ascension: c.max_ascension,
       preferred_ascension: c.preferred_ascension,
+      total_wins: c.total_wins ?? 0,
+      total_losses: c.total_losses ?? 0,
     }))
 
   res.json(characters)

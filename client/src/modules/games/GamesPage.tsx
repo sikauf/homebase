@@ -1,50 +1,39 @@
-import { Routes, Route, NavLink } from 'react-router-dom'
-import PageWrapper from '../../components/layout/PageWrapper'
+import { NavLink, Routes, Route, Navigate } from 'react-router-dom'
 import SlayTheSpire2 from './SlayTheSpire2'
 
-const GAMES = [
-  { id: 'sts2', label: 'Slay the Spire 2', icon: '🗡️' },
+const TABS = [
+  { label: 'Slay the Spire 2', to: '/games/sts2' },
 ]
 
 export default function GamesPage() {
   return (
-    <PageWrapper title="Games" subtitle="Track your progress across games">
-      <div className="flex gap-6">
-        {/* Game tabs */}
-        <nav className="flex flex-col gap-1 w-44 shrink-0">
-          {GAMES.map((g) => (
-            <NavLink
-              key={g.id}
-              to={`/games/${g.id}`}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive
-                    ? 'bg-gray-900 text-white font-medium'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                }`
-              }
-            >
-              <span>{g.icon}</span>
-              <span>{g.label}</span>
-            </NavLink>
-          ))}
-        </nav>
-
-        {/* Game content */}
-        <div className="flex-1 min-w-0">
-          <Routes>
-            <Route path="sts2" element={<SlayTheSpire2 />} />
-            <Route
-              path="*"
-              element={
-                <div className="text-center py-20 text-gray-400 text-sm">
-                  Select a game on the left.
-                </div>
-              }
-            />
-          </Routes>
-        </div>
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Tab bar */}
+      <div className="bg-gray-900 border-b border-gray-800 px-4 flex gap-1 shrink-0">
+        {TABS.map((tab) => (
+          <NavLink
+            key={tab.to}
+            to={tab.to}
+            className={({ isActive }) =>
+              `px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                isActive
+                  ? 'border-white text-white'
+                  : 'border-transparent text-gray-400 hover:text-white hover:border-gray-500'
+              }`
+            }
+          >
+            {tab.label}
+          </NavLink>
+        ))}
       </div>
-    </PageWrapper>
+
+      {/* Content */}
+      <div className="flex-1 flex p-5 bg-black min-h-0">
+        <Routes>
+          <Route index element={<Navigate to="sts2" replace />} />
+          <Route path="sts2" element={<SlayTheSpire2 />} />
+        </Routes>
+      </div>
+    </div>
   )
 }
