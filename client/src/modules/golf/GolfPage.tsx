@@ -7,7 +7,7 @@ import { useGolf } from '../../hooks/useGolf'
 
 function StatPill({ label, value }: { label: string; value: string | number | null }) {
   return (
-    <div className="rounded-xl px-5 py-4 text-center" style={{ background: '#1a1a1a' }}>
+    <div className="rounded-xl px-5 py-4 text-center" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}>
       <p className="text-xs uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</p>
       <p className="text-2xl font-bold text-white" style={{ fontFamily: "'Kreon', serif" }}>{value ?? '—'}</p>
     </div>
@@ -23,10 +23,14 @@ export default function GolfPage() {
       <PageWrapper
         title="Golf"
         subtitle="Track your rounds and stats"
+        dark
         action={
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

@@ -12,10 +12,10 @@ export default function MyrtieTripSection() {
   return (
     <div
       className="mb-8 rounded-2xl overflow-hidden grid"
-      style={{ height: '300px', gridTemplateColumns: '1fr 2fr', gap: '1px', background: 'rgba(255,255,255,0.05)' }}
+      style={{ height: '300px', gridTemplateColumns: '1fr 2fr', gap: '1px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 0 0 1px rgba(255,255,255,0.04) inset' }}
     >
       {/* Dedicated dark text column */}
-      <div className="flex flex-col justify-center px-8" style={{ background: '#0c1009' }}>
+      <div className="flex flex-col justify-center px-8" style={{ background: '#1a1a1a' }}>
         <p
           className="text-xs tracking-[.5em] uppercase mb-4"
           style={{ color: 'rgba(255,255,255,0.3)' }}

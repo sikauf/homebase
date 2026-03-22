@@ -38,6 +38,16 @@ npm run dev
 - `DB_PATH` — path to SQLite file (defaults to `data/homebase.db`; set to `:memory:` during tests)
 - `STS2_SAVE_PATH` — path to Slay the Spire 2 `progress.save` file
 
+## UI color style
+
+All pages use a dark color scheme by default:
+- **Page background:** `#0c0c0c` (near-black)
+- **Cards / accent surfaces:** `#1a1a1a` with `border: 1px solid rgba(255,255,255,0.06)`
+- **Muted text:** `rgba(255,255,255,0.35)` for secondary labels, `rgba(255,255,255,0.25)` for tertiary
+- **Primary text:** `rgba(255,255,255,0.92)` or `text-white`
+
+Apply `dark` prop to `PageWrapper` for any new page. Never default to light (`bg-gray-50`) backgrounds for new modules.
+
 ## Managing static assets
 
 Image and other static assets always live inside the repo at `client/public/<module>/<subfolder>/` (e.g. `client/public/games/sts2/`, `client/public/golf/myrtle/`). They are served directly by Vite's static file server and referenced in code as absolute paths (e.g. `/golf/myrtle/photo.jpg`). When a user provides an asset folder from outside the repo, copy it into the appropriate `client/public/` subdirectory and delete (or ask to delete) the original. Never reference files outside the repo.
