@@ -12,6 +12,14 @@ interface Book {
 // Fallback palette if server couldn't extract a color
 const FALLBACK_RGBS = ['251,191,36', '45,212,191', '167,139,250', '251,146,60']
 
+function toHardcoverSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 async function fetchJSON<T>(url: string): Promise<T> {
   const r = await fetch(url)
   const text = await r.text()
@@ -44,9 +52,14 @@ function BookCard({ book, index, hovered, onHover }: {
     ? Math.min((book.progress_pages / book.pages) * 100, 100)
     : null
 
+  const href = `https://hardcover.app/books/${toHardcoverSlug(book.title)}/journals/@sikauf`
+
   return (
-    <div
-      className="relative rounded-xl overflow-hidden flex flex-col cursor-default select-none"
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="relative rounded-xl overflow-hidden flex flex-col cursor-pointer select-none"
       style={{
         background: '#1a1a1a',
         border: `1px solid ${hovered ? `rgba(${slot.rgb},0.45)` : 'rgba(255,255,255,0.04)'}`,
@@ -55,6 +68,7 @@ function BookCard({ book, index, hovered, onHover }: {
           : '0 2px 16px rgba(0,0,0,0.6)',
         transform: hovered ? 'translateY(-6px)' : 'translateY(0)',
         transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+        textDecoration: 'none',
       }}
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
@@ -160,7 +174,7 @@ function BookCard({ book, index, hovered, onHover }: {
           </p>
         </div>
       </div>
-    </div>
+    </a>
   )
 }
 

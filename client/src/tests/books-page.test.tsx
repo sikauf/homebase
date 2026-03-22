@@ -135,3 +135,32 @@ describe('BookCard hover behaviour', () => {
     expect(card.style.transform).toBe('translateY(0)')
   })
 })
+
+describe('BookCard links', () => {
+  it('each card links to the Hardcover journal URL in a new tab', async () => {
+    mockFetch(MOCK_BOOKS)
+    render(<BooksPage />)
+    await waitFor(() => screen.getByText('Iron Gold'))
+
+    const ironGoldLink = screen.getByText('Iron Gold').closest('a') as HTMLAnchorElement
+    expect(ironGoldLink.href).toBe('https://hardcover.app/books/iron-gold/journals/@sikauf')
+    expect(ironGoldLink.target).toBe('_blank')
+    expect(ironGoldLink.rel).toContain('noopener')
+  })
+
+  it('slugifies titles with apostrophes correctly', async () => {
+    mockFetch([{
+      title: "Carl's Doomsday Scenario",
+      author: 'Matt Dinniman',
+      pages: 385,
+      progress_pages: null,
+      cover_url: null,
+      accent_rgb: null,
+    }])
+    render(<BooksPage />)
+    await waitFor(() => screen.getByText("Carl's Doomsday Scenario"))
+
+    const link = screen.getByText("Carl's Doomsday Scenario").closest('a') as HTMLAnchorElement
+    expect(link.href).toBe('https://hardcover.app/books/carls-doomsday-scenario/journals/@sikauf')
+  })
+})
