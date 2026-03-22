@@ -167,8 +167,10 @@ export default function SlayTheSpire2() {
                   }}
                 />
                 <span
-                  className="text-7xl font-black leading-none"
+                  className="text-7xl leading-none"
                   style={{
+                    fontFamily: "'Kreon', serif",
+                    fontWeight: 700,
                     color: '#fff',
                     textShadow: isHovered
                       ? `0 0 24px rgba(${cfg.rgb},0.95), 0 0 48px rgba(${cfg.rgb},0.5)`
