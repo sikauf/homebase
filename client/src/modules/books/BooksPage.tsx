@@ -187,7 +187,7 @@ function BookCard({ book, index, hovered, onHover }: {
       {/* Info panel */}
       <div
         className="shrink-0 relative flex flex-col gap-2"
-        style={{ background: '#111', padding: '14px 42px 16px 14px' }}
+        style={{ background: '#111', padding: '14px 42px 18px 14px' }}
       >
         {/* Colored tint on hover */}
         <div
@@ -207,26 +207,48 @@ function BookCard({ book, index, hovered, onHover }: {
           {book.title}
         </p>
 
-        {/* Author + page count */}
-        <div className="relative flex flex-col gap-1">
-          {book.author && (
-            <p className="text-sm truncate" style={{ color: `rgba(${slot.rgb},0.8)` }}>
-              {book.author}
-            </p>
-          )}
-          <p
-            className="tracking-widest uppercase"
+        {/* Author */}
+        {book.author && (
+          <p className="text-sm truncate relative" style={{ color: `rgba(${slot.rgb},0.8)` }}>
+            {book.author}
+          </p>
+        )}
+
+        {/* Page count — big display number */}
+        <div className="relative flex items-baseline gap-1.5 mt-1">
+          <span
             style={{
-              fontSize: '9px',
-              letterSpacing: '0.14em',
               fontFamily: "'Kreon', serif",
-              color: pct != null ? `rgba(${slot.rgb},0.5)` : 'rgba(255,255,255,0.2)',
+              fontWeight: 700,
+              fontSize: '1.6rem',
+              lineHeight: 1,
+              color: pct != null ? `rgba(${slot.rgb},0.9)` : 'rgba(255,255,255,0.25)',
             }}
           >
-            {book.progress_pages != null
-              ? `p. ${book.progress_pages} · ${book.pages} pp`
-              : `${book.pages} pp`}
-          </p>
+            {book.progress_pages != null ? book.progress_pages : book.pages}
+          </span>
+          {book.progress_pages != null && (
+            <span
+              style={{
+                fontFamily: "'Kreon', serif",
+                fontSize: '0.8rem',
+                color: `rgba(${slot.rgb},0.45)`,
+              }}
+            >
+              / {book.pages} pp
+            </span>
+          )}
+          {book.progress_pages == null && (
+            <span
+              style={{
+                fontFamily: "'Kreon', serif",
+                fontSize: '0.8rem',
+                color: 'rgba(255,255,255,0.18)',
+              }}
+            >
+              pp
+            </span>
+          )}
         </div>
       </div>
     </a>

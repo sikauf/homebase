@@ -61,16 +61,18 @@ describe('BooksPage', () => {
     expect(screen.getByText('Barbara Kingsolver')).toBeInTheDocument()
   })
 
-  it('shows progress text for books with progress', async () => {
+  it('shows current page as large number for books with progress', async () => {
     mockFetch(MOCK_BOOKS)
     render(<BooksPage />)
-    await waitFor(() => expect(screen.getByText('p. 220 · 624 pp')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('220')).toBeInTheDocument())
+    expect(screen.getByText('/ 624 pp')).toBeInTheDocument()
   })
 
-  it('shows total pages for books with no progress', async () => {
+  it('shows total pages as large number for books with no progress', async () => {
     mockFetch(MOCK_BOOKS)
     render(<BooksPage />)
-    await waitFor(() => expect(screen.getByText('560 pp')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('560')).toBeInTheDocument())
+    expect(screen.getByText('pp')).toBeInTheDocument()
   })
 
   it('shows empty state when no books are returned', async () => {
