@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 
 interface NavItem {
   label: string
@@ -19,7 +19,9 @@ export default function Sidebar() {
   return (
     <aside className="w-56 min-h-screen bg-gray-900 flex flex-col">
       <div className="px-6 py-5 border-b border-gray-800">
-        <h1 className="text-white font-bold text-lg tracking-tight">Home Base</h1>
+        <Link to="/" className="text-white font-bold text-lg tracking-tight hover:text-gray-300 transition-colors">
+          Home Base
+        </Link>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) =>
