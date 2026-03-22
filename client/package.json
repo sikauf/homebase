@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "echo 'No client tests'"
   },
   "dependencies": {
     "object-hash": "^3.0.0",
