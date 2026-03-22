@@ -154,15 +154,18 @@ export default function SlayTheSpire2() {
 
               {/* Ascension number panel */}
               <div
-                className="shrink-0 flex items-center justify-center"
-                style={{
-                  height: '5.5rem',
-                  background: isHovered
-                    ? `linear-gradient(to bottom, #111, rgba(${cfg.rgb},0.08))`
-                    : 'linear-gradient(to bottom, #111, #0f0f0f)',
-                  transition: 'background 0.3s ease',
-                }}
+                className="shrink-0 relative flex items-center justify-center"
+                style={{ height: '5.5rem', background: '#111' }}
               >
+                {/* Colored tint on hover — separate layer avoids gradient transition flicker */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: `rgba(${cfg.rgb},0.07)`,
+                    opacity: isHovered ? 1 : 0,
+                    transition: 'opacity 0.3s ease',
+                  }}
+                />
                 <span
                   className="text-7xl font-black leading-none"
                   style={{

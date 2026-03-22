@@ -7,7 +7,6 @@ import type { GolfRound } from '../../types/golf'
 const COMING_SOON = [
   { label: 'Books', icon: '📚', desc: 'Track your reading list and reviews.' },
   { label: 'Fitness', icon: '💪', desc: 'Log workouts and monitor progress.' },
-  { label: 'Gaming', icon: '🎮', desc: 'Keep a record of games played.' },
 ]
 
 function formatDate(dateStr: string) {
