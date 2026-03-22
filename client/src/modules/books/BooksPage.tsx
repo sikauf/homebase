@@ -54,6 +54,14 @@ function BookCard({ book, index, hovered, onHover }: {
 
   const href = `https://hardcover.app/books/${toHardcoverSlug(book.title)}/journals/@sikauf`
 
+  const STRINGS = [
+    { h: 13, o: 0.55, x: 5  },
+    { h: 18, o: 0.90, x: 9  },
+    { h: 15, o: 0.75, x: 13 },
+    { h: 11, o: 0.60, x: 17 },
+    { h: 16, o: 0.80, x: 21 },
+  ]
+
   return (
     <a
       href={href}
@@ -73,6 +81,59 @@ function BookCard({ book, index, hovered, onHover }: {
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
     >
+      {/* Bookmark ribbon — hangs freely from the top-right */}
+      <div
+        className="absolute top-0 bottom-0 pointer-events-none"
+        style={{ right: '16px', width: '26px', zIndex: 10 }}
+      >
+        {/* Tassel strings — sit at top edge, read as threading in from above */}
+        {pct != null && STRINGS.map(({ h, o, x }, i) => (
+          <div
+            key={i}
+            className="absolute top-0"
+            style={{
+              left: `${x}px`,
+              width: '1.5px',
+              height: `${h}px`,
+              background: `rgba(${slot.rgb},${o})`,
+              borderRadius: '0 0 1px 1px',
+              zIndex: 12,
+            }}
+          />
+        ))}
+
+        {/* Ribbon body */}
+        <div
+          className="absolute top-0 left-0 right-0"
+          style={{
+            height: pct != null ? `${pct}%` : '13%',
+            minHeight: '28px',
+            background: pct != null ? `rgba(${slot.rgb},0.93)` : 'rgba(255,255,255,0.07)',
+            clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 16px), 50% 100%, 0 calc(100% - 16px))',
+            boxShadow: pct != null
+              ? `0 8px 24px rgba(${slot.rgb},0.5), inset -1px 0 0 rgba(255,255,255,0.15), inset 1px 0 0 rgba(255,255,255,0.08)`
+              : 'none',
+            transition: 'box-shadow 0.18s ease',
+          }}
+        />
+        {/* Hole punch near top — classic bookmark detail */}
+        {pct != null && (
+          <div
+            className="absolute"
+            style={{
+              top: '9px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: 'rgba(0,0,0,0.4)',
+              zIndex: 13,
+            }}
+          />
+        )}
+      </div>
+
       {/* Cover art */}
       <div className="flex-1 relative overflow-hidden min-h-0">
         {book.cover_url ? (
@@ -88,7 +149,7 @@ function BookCard({ book, index, hovered, onHover }: {
                 transform: 'scale(1.15)',
               }}
             />
-            {/* Sharp full cover — object-contain so nothing is cropped */}
+            {/* Sharp full cover — bookmark overlays naturally via z-index */}
             <img
               src={book.cover_url}
               alt={book.title}
@@ -125,8 +186,8 @@ function BookCard({ book, index, hovered, onHover }: {
 
       {/* Info panel */}
       <div
-        className="shrink-0 relative px-3 pt-2 pb-3 flex flex-col gap-1.5"
-        style={{ height: '7rem', background: '#111' }}
+        className="shrink-0 relative flex flex-col gap-2"
+        style={{ background: '#111', padding: '14px 42px 16px 14px' }}
       >
         {/* Colored tint on hover */}
         <div
@@ -140,37 +201,31 @@ function BookCard({ book, index, hovered, onHover }: {
 
         {/* Title */}
         <p
-          className="text-white leading-tight relative"
-          style={{ fontFamily: "'Kreon', serif", fontWeight: 700, fontSize: '0.95rem' }}
+          className="text-white leading-snug relative"
+          style={{ fontFamily: "'Kreon', serif", fontWeight: 700, fontSize: '1.15rem' }}
         >
           {book.title}
         </p>
 
-        {/* Author */}
-        {book.author && (
-          <p className="text-xs relative truncate" style={{ color: `rgba(${slot.rgb},0.75)` }}>
-            {book.author}
-          </p>
-        )}
-
-        {/* Progress bar */}
-        <div className="mt-auto relative">
-          <div className="h-0.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-            {pct != null && (
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${pct}%`,
-                  background: `rgba(${slot.rgb},0.9)`,
-                  boxShadow: `0 0 6px rgba(${slot.rgb},0.7)`,
-                }}
-              />
-            )}
-          </div>
-          <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+        {/* Author + page count */}
+        <div className="relative flex flex-col gap-1">
+          {book.author && (
+            <p className="text-sm truncate" style={{ color: `rgba(${slot.rgb},0.8)` }}>
+              {book.author}
+            </p>
+          )}
+          <p
+            className="tracking-widest uppercase"
+            style={{
+              fontSize: '9px',
+              letterSpacing: '0.14em',
+              fontFamily: "'Kreon', serif",
+              color: pct != null ? `rgba(${slot.rgb},0.5)` : 'rgba(255,255,255,0.2)',
+            }}
+          >
             {book.progress_pages != null
-              ? `${book.progress_pages} / ${book.pages} pages`
-              : `${book.pages} pages`}
+              ? `p. ${book.progress_pages} · ${book.pages} pp`
+              : `${book.pages} pp`}
           </p>
         </div>
       </div>

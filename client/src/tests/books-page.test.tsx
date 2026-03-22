@@ -64,13 +64,13 @@ describe('BooksPage', () => {
   it('shows progress text for books with progress', async () => {
     mockFetch(MOCK_BOOKS)
     render(<BooksPage />)
-    await waitFor(() => expect(screen.getByText('220 / 624 pages')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('p. 220 · 624 pp')).toBeInTheDocument())
   })
 
   it('shows total pages for books with no progress', async () => {
     mockFetch(MOCK_BOOKS)
     render(<BooksPage />)
-    await waitFor(() => expect(screen.getByText('560 pages')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('560 pp')).toBeInTheDocument())
   })
 
   it('shows empty state when no books are returned', async () => {
@@ -133,6 +133,62 @@ describe('BookCard hover behaviour', () => {
     expect(card.style.transform).toBe('translateY(-6px)')
     fireEvent.mouseLeave(card)
     expect(card.style.transform).toBe('translateY(0)')
+  })
+})
+
+describe('BookCard bookmark', () => {
+  it('renders a bookmark ribbon for books with progress', async () => {
+    mockFetch(MOCK_BOOKS)
+    render(<BooksPage />)
+    await waitFor(() => screen.getByText('Iron Gold'))
+
+    // Iron Gold has progress — ribbon should have a non-trivial height %
+    const ironGoldCard = screen.getByText('Iron Gold').closest('a') as HTMLElement
+    const ribbons = ironGoldCard.querySelectorAll('[style*="polygon"]')
+    expect(ribbons.length).toBeGreaterThan(0)
+  })
+
+  it('renders tassel strings for books with progress', async () => {
+    mockFetch(MOCK_BOOKS)
+    render(<BooksPage />)
+    await waitFor(() => screen.getByText('Iron Gold'))
+
+    const ironGoldCard = screen.getByText('Iron Gold').closest('a') as HTMLElement
+    // Strings are 1.5px wide divs inside the bookmark container — there are 5
+    const strings = Array.from(ironGoldCard.querySelectorAll('div')).filter(
+      (el) => el.style.width === '1.5px'
+    )
+    expect(strings.length).toBe(5)
+  })
+
+  it('does not render tassel strings for books without progress', async () => {
+    mockFetch(MOCK_BOOKS)
+    render(<BooksPage />)
+    await waitFor(() => screen.getByText('Demon Copperhead'))
+
+    const demonCard = screen.getByText('Demon Copperhead').closest('a') as HTMLElement
+    const strings = Array.from(demonCard.querySelectorAll('div')).filter(
+      (el) => el.style.width === '1.5px'
+    )
+    expect(strings.length).toBe(0)
+  })
+
+  it('bookmark hole punch is only shown for books with progress', async () => {
+    mockFetch(MOCK_BOOKS)
+    render(<BooksPage />)
+    await waitFor(() => screen.getByText('Iron Gold'))
+
+    const ironGoldCard = screen.getByText('Iron Gold').closest('a') as HTMLElement
+    const holes = Array.from(ironGoldCard.querySelectorAll('div')).filter(
+      (el) => el.style.borderRadius === '50%'
+    )
+    expect(holes.length).toBeGreaterThan(0)
+
+    const demonCard = screen.getByText('Demon Copperhead').closest('a') as HTMLElement
+    const demonHoles = Array.from(demonCard.querySelectorAll('div')).filter(
+      (el) => el.style.borderRadius === '50%'
+    )
+    expect(demonHoles.length).toBe(0)
   })
 })
 
