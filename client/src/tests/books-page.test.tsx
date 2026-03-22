@@ -9,6 +9,7 @@ const MOCK_BOOKS = [
     pages: 624,
     progress_pages: 220,
     cover_url: 'https://example.com/iron-gold.jpg',
+    accent_rgb: '233,124,22',
   },
   {
     title: 'Demon Copperhead',
@@ -16,6 +17,7 @@ const MOCK_BOOKS = [
     pages: 560,
     progress_pages: null,
     cover_url: 'https://example.com/demon-copperhead.jpg',
+    accent_rgb: '72,130,180',
   },
 ]
 

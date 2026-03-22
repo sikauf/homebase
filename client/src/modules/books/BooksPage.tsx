@@ -6,14 +6,11 @@ interface Book {
   pages: number
   progress_pages: number | null
   cover_url: string | null
+  accent_rgb: string | null
 }
 
-const SLOT_COLORS = [
-  { color: '#fbbf24', rgb: '251,191,36'  },
-  { color: '#2dd4bf', rgb: '45,212,191'  },
-  { color: '#a78bfa', rgb: '167,139,250' },
-  { color: '#fb923c', rgb: '251,146,60'  },
-]
+// Fallback palette if server couldn't extract a color
+const FALLBACK_RGBS = ['251,191,36', '45,212,191', '167,139,250', '251,146,60']
 
 async function fetchJSON<T>(url: string): Promise<T> {
   const r = await fetch(url)
@@ -41,7 +38,8 @@ function BookCard({ book, index, hovered, onHover }: {
   hovered: boolean
   onHover: (v: boolean) => void
 }) {
-  const slot = SLOT_COLORS[index % SLOT_COLORS.length]
+  const rgb = book.accent_rgb ?? FALLBACK_RGBS[index % FALLBACK_RGBS.length]
+  const slot = { rgb }
   const pct = book.progress_pages != null && book.pages > 0
     ? Math.min((book.progress_pages / book.pages) * 100, 100)
     : null
