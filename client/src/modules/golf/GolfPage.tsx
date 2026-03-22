@@ -2,13 +2,14 @@ import { useState } from 'react'
 import PageWrapper from '../../components/layout/PageWrapper'
 import RoundCard from './RoundCard'
 import AddRoundModal from './AddRoundModal'
+import MyrtieTripSection from './MyrtieTripSection'
 import { useGolf } from '../../hooks/useGolf'
 
 function StatPill({ label, value }: { label: string; value: string | number | null }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 text-center">
-      <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-xl font-bold text-gray-900">{value ?? '—'}</p>
+    <div className="rounded-xl px-5 py-4 text-center" style={{ background: '#1a1a1a' }}>
+      <p className="text-xs uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</p>
+      <p className="text-2xl font-bold text-white" style={{ fontFamily: "'Kreon', serif" }}>{value ?? '—'}</p>
     </div>
   )
 }
@@ -46,6 +47,7 @@ export default function GolfPage() {
 
         {!loading && !error && (
           <>
+            <MyrtieTripSection />
             {stats && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
                 <StatPill label="Rounds" value={stats.total_rounds} />
