@@ -11,7 +11,7 @@ const navItems: NavItem[] = [
   { label: 'Home', to: '/', icon: '🏠' },
   { label: 'Golf', to: '/golf', icon: '⛳' },
   { label: 'Games', to: '/games', icon: '🎮' },
-  { label: 'Books', icon: '📚', disabled: true },
+  { label: 'Books', to: '/books', icon: '📚' },
   { label: 'Fitness', icon: '💪', disabled: true },
 ]
 
