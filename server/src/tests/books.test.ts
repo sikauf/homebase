@@ -104,6 +104,95 @@ describe('GET /api/books/currently-reading', () => {
     }
   })
 
+  it('uses edition page count over book page count when edition is present', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{
+          user_books: [{
+            user_book_reads: [{ progress_pages: 75, edition: { pages: 512 } }],
+            book: {
+              title: 'Edition Book',
+              pages: 480, // book default differs from edition
+              image: null,
+              contributions: [{ author: { name: 'Author' } }],
+            },
+          }],
+        }],
+      },
+    })
+    try {
+      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const body = await res.json() as Record<string, unknown>[]
+      assert.equal(body[0].pages, 512, 'should use edition page count, not book page count')
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('falls back to book page count when edition has no pages', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{
+          user_books: [{
+            user_book_reads: [{ progress_pages: 50, edition: null }],
+            book: {
+              title: 'Fallback Book',
+              pages: 300,
+              image: null,
+              contributions: [],
+            },
+          }],
+        }],
+      },
+    })
+    try {
+      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const body = await res.json() as Record<string, unknown>[]
+      assert.equal(body[0].pages, 300, 'should fall back to book page count when edition is null')
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('uses the first (most recent) read for progress when multiple reads exist', async () => {
+    // Hardcover returns reads ordered by started_at desc, so index 0 is the current read.
+    // This test ensures we use reads[0] and not, e.g., reads[1] (an older re-read).
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{
+          user_books: [{
+            user_book_reads: [
+              { progress_pages: 200, edition: { pages: 400 } }, // current read (most recent)
+              { progress_pages: 400, edition: { pages: 400 } }, // previous completed read
+            ],
+            book: {
+              title: 'Re-read Book',
+              pages: 400,
+              image: null,
+              contributions: [{ author: { name: 'Author' } }],
+            },
+          }],
+        }],
+      },
+    })
+    try {
+      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const body = await res.json() as Record<string, unknown>[]
+      assert.equal(body[0].progress_pages, 200, 'should use the most recent read progress, not an older re-read')
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
   it('returns empty array when no books are currently being read', async () => {
     const orig = process.env.HARDCOVER_API_TOKEN
     process.env.HARDCOVER_API_TOKEN = 'test-token'

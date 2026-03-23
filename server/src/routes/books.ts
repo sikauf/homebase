@@ -33,8 +33,11 @@ router.get('/profile', async (_req: Request, res: Response) => {
 const CURRENTLY_READING_QUERY = `{
   me {
     user_books(where: { status_id: { _eq: 2 } }) {
-      user_book_reads {
+      user_book_reads(order_by: { started_at: desc_nulls_last }, limit: 1) {
         progress_pages
+        edition {
+          pages
+        }
       }
       book {
         title
@@ -49,7 +52,7 @@ const CURRENTLY_READING_QUERY = `{
 }`
 
 interface HardcoverBook {
-  user_book_reads: { progress_pages: number }[]
+  user_book_reads: { progress_pages: number; edition: { pages: number } | null }[]
   book: {
     title: string
     pages: number
@@ -96,11 +99,12 @@ router.get('/currently-reading', async (_req: Request, res: Response) => {
         }
       } catch { /* fall through — client will use a default */ }
     }
+    const currentRead = ub.user_book_reads[0]
     return {
       title: ub.book.title,
       author: ub.book.contributions[0]?.author.name ?? null,
-      pages: ub.book.pages,
-      progress_pages: ub.user_book_reads[0]?.progress_pages ?? null,
+      pages: currentRead?.edition?.pages ?? ub.book.pages,
+      progress_pages: currentRead?.progress_pages ?? null,
       cover_url,
       accent_rgb,
     }
