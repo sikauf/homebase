@@ -69,11 +69,11 @@ function BookCard({ book, index, hovered, onHover }: {
       rel="noopener noreferrer"
       className="relative rounded-xl overflow-hidden flex flex-col cursor-pointer select-none"
       style={{
-        background: '#1a1a1a',
-        border: `1px solid ${hovered ? `rgba(${slot.rgb},0.45)` : 'rgba(255,255,255,0.04)'}`,
+        background: '#110c07',
+        border: `1px solid ${hovered ? `rgba(255,185,50,0.35)` : 'rgba(255,255,255,0.05)'}`,
         boxShadow: hovered
-          ? `0 12px 40px rgba(${slot.rgb},0.3), 0 0 0 1px rgba(${slot.rgb},0.1)`
-          : '0 2px 16px rgba(0,0,0,0.6)',
+          ? `0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,185,50,0.12), 0 4px 20px rgba(${slot.rgb},0.2)`
+          : '0 4px 20px rgba(0,0,0,0.7)',
         transform: hovered ? 'translateY(-6px)' : 'translateY(0)',
         transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
         textDecoration: 'none',
@@ -136,64 +136,92 @@ function BookCard({ book, index, hovered, onHover }: {
 
       {/* Cover art */}
       <div className="flex-1 relative overflow-hidden min-h-0">
+        {/* Mahogany / dark leather base */}
+        <div className="absolute inset-0" style={{ background: '#110c07' }} />
+
+        {/* Overhead reading-lamp bloom — warm amber from above */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse 110% 65% at 50% -8%, rgba(255,195,65,0.30) 0%, rgba(195,120,30,0.12) 45%, transparent 72%)',
+          }}
+        />
+
+        {/* Subtle mahogany wood grain — fine diagonal lines */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: [
+              'repeating-linear-gradient(104deg, transparent 0px, transparent 5px, rgba(255,255,255,0.012) 5px, rgba(255,255,255,0.012) 6px)',
+              'repeating-linear-gradient(104deg, transparent 0px, transparent 11px, rgba(0,0,0,0.06) 11px, rgba(0,0,0,0.06) 12px)',
+            ].join(', '),
+          }}
+        />
+
+        {/* Cover-color side-light — book casting its own glow onto the surface */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse at 18% 70%, rgba(${slot.rgb},0.13) 0%, transparent 55%)`,
+          }}
+        />
+
+        {/* Vignette — draws the eye inward to the cover */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse 85% 85% at 50% 45%, transparent 40%, rgba(0,0,0,0.55) 100%)',
+          }}
+        />
+
         {book.cover_url ? (
-          <>
-            {/* Blurred backdrop — no transition, static */}
-            <img
-              src={book.cover_url}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-              style={{
-                filter: 'blur(18px) brightness(0.28) saturate(0.7)',
-                transform: 'scale(1.15)',
-              }}
-            />
-            {/* Sharp full cover — bookmark overlays naturally via z-index */}
-            <img
-              src={book.cover_url}
-              alt={book.title}
-              className="absolute inset-0 w-full h-full object-contain"
-              style={{
-                filter: hovered ? 'brightness(1.05)' : 'brightness(0.92)',
-                transition: 'filter 0.18s ease',
-                padding: '12px 12px 0',
-              }}
-            />
-          </>
+          <img
+            src={book.cover_url}
+            alt={book.title}
+            className="absolute inset-0 w-full h-full object-contain"
+            style={{
+              filter: hovered ? 'brightness(1.08) drop-shadow(0 8px 20px rgba(0,0,0,0.7))' : 'brightness(0.95) drop-shadow(0 6px 16px rgba(0,0,0,0.8))',
+              transition: 'filter 0.2s ease',
+              padding: '14px 14px 0',
+            }}
+          />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-6xl" style={{ background: '#111' }}>
+          <div className="absolute inset-0 flex items-center justify-center text-6xl">
             📖
           </div>
         )}
 
-        {/* Colored bloom on hover */}
+        {/* Warm lamp flare on hover */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
+          className="absolute top-0 left-0 right-0 h-28 pointer-events-none"
           style={{
-            background: `radial-gradient(ellipse at 50% 100%, rgba(${slot.rgb},0.2), transparent 70%)`,
+            background: 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(255,200,80,0.10), transparent 70%)',
             opacity: hovered ? 1 : 0,
-            transition: 'opacity 0.18s ease',
+            transition: 'opacity 0.2s ease',
           }}
         />
 
         {/* Bottom fade into panel */}
         <div
           className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-          style={{ background: 'linear-gradient(to bottom, transparent, #111)' }}
+          style={{ background: 'linear-gradient(to bottom, transparent, #0d0904)' }}
         />
       </div>
 
       {/* Info panel */}
       <div
         className="shrink-0 relative flex flex-col gap-2"
-        style={{ background: '#111', padding: '14px 42px 18px 14px' }}
+        style={{
+          background: '#0d0904',
+          padding: '14px 42px 18px 14px',
+          borderTop: '1px solid rgba(255,185,50,0.18)',
+        }}
       >
-        {/* Colored tint on hover */}
+        {/* Warm tint on hover */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `rgba(${slot.rgb},0.06)`,
+            background: `linear-gradient(to right, rgba(255,185,50,0.04), rgba(${slot.rgb},0.06))`,
             opacity: hovered ? 1 : 0,
             transition: 'opacity 0.3s ease',
           }}
