@@ -10,15 +10,33 @@ const COLLARS: Collar[] = [
   { id: 'hunter',      name: 'Hunter',      rgb: '80,160,80'    },
   { id: 'mage',        name: 'Mage',        rgb: '130,150,220'  },
   { id: 'monk',        name: 'Monk',        rgb: '160,160,170'  },
-  { id: 'necromancer', name: 'Necromancer', rgb: '160,100,210'  },
+  { id: 'necromancer', name: 'Necromancer', rgb: '80,80,100'    },
   { id: 'psychic',     name: 'Psychic',     rgb: '148,100,190'  },
   { id: 'tank',        name: 'Tank',        rgb: '180,155,90'   },
   { id: 'thief',       name: 'Thief',       rgb: '240,215,80'   },
   { id: 'tinkerer',    name: 'Tinkerer',    rgb: '72,210,185'   },
 ]
 
+const SWAY_CSS = `
+  @keyframes sway {
+    0%   { transform: rotate(0deg); }
+    18%  { transform: rotate(-9deg); }
+    40%  { transform: rotate(7deg); }
+    58%  { transform: rotate(-4deg); }
+    74%  { transform: rotate(2deg); }
+    86%  { transform: rotate(-1deg); }
+    100% { transform: rotate(0deg); }
+  }
+  .collar-hang {
+    transform-origin: top center;
+    animation: none;
+  }
+  .collar-hang.swaying {
+    animation: sway 0.75s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+`
 
-function CollarCard({
+function CollarHanger({
   collar,
   hovered,
   onHover,
@@ -29,82 +47,70 @@ function CollarCard({
   onHover: (v: boolean) => void
   onClick: () => void
 }) {
-  const { rgb } = collar
-
   return (
     <div
-      className="relative flex flex-col rounded-xl overflow-hidden cursor-pointer select-none"
-      style={{
-        background: '#161616',
-        border: `1px solid ${hovered ? `rgba(${rgb},0.5)` : 'rgba(255,255,255,0.05)'}`,
-        boxShadow: hovered
-          ? `0 14px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(${rgb},0.12), 0 0 28px rgba(${rgb},0.3)`
-          : '0 4px 20px rgba(0,0,0,0.6)',
-        transform: hovered ? 'translateY(-6px)' : 'translateY(0)',
-        transition: 'transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s ease, border-color 0.2s ease',
-      }}
+      className="flex-1 flex flex-col items-center cursor-pointer select-none"
+      style={{ padding: '0 6px' }}
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
       onClick={onClick}
     >
-      {/* Icon area */}
+      {/* Hook mount on rack */}
       <div
-        className="relative flex items-center justify-center"
-        style={{ aspectRatio: '1 / 1', padding: '16px', background: '#161616' }}
-      >
-        {/* Radial glow on hover */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `radial-gradient(ellipse 75% 75% at 50% 55%, rgba(${rgb},0.18) 0%, transparent 70%)`,
-            opacity: hovered ? 1 : 0,
-            transition: 'opacity 0.2s ease',
-          }}
-        />
-        <img
-          src={`/games/mewgenics/${collar.id}.png`}
-          alt={collar.name}
-          draggable={false}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            imageRendering: 'pixelated',
-            filter: hovered ? `drop-shadow(0 0 10px rgba(${rgb},0.7)) brightness(1.1)` : 'brightness(0.9)',
-            transform: hovered ? 'scale(1.06)' : 'scale(1)',
-            transition: 'filter 0.2s ease, transform 0.2s ease',
-          }}
-        />
-      </div>
-
-      {/* Name panel */}
-      <div
-        className="shrink-0 relative flex items-center justify-center"
         style={{
-          padding: '10px 12px 13px',
-          background: '#111',
-          borderTop: `1px solid ${hovered ? `rgba(${rgb},0.2)` : 'rgba(255,255,255,0.04)'}`,
-          transition: 'border-color 0.2s ease',
+          width: '3px',
+          height: '14px',
+          background: 'linear-gradient(to bottom, #888, #555)',
+          borderRadius: '0 0 2px 2px',
         }}
-      >
+      />
+
+      {/* Everything below rotates as one unit from the hook top */}
+      <div className={`collar-hang flex flex-col items-center w-full ${hovered ? 'swaying' : ''}`}>
+        {/* Chain */}
         <div
-          className="absolute inset-0 pointer-events-none"
           style={{
-            background: `rgba(${rgb},0.06)`,
-            opacity: hovered ? 1 : 0,
-            transition: 'opacity 0.2s ease',
+            width: '2px',
+            height: '40px',
+            background: 'linear-gradient(to bottom, #666, #444)',
           }}
         />
-        <span
-          className="relative tracking-widest uppercase text-xs font-semibold"
+
+        {/* Collar icon — fills column width */}
+        <div
+          className="w-full"
           style={{
-            color: hovered ? `rgba(${rgb},0.9)` : 'rgba(255,255,255,0.45)',
+            filter: hovered
+              ? `drop-shadow(0 10px 22px rgba(${collar.rgb},0.75)) drop-shadow(0 0 8px rgba(${collar.rgb},0.4)) brightness(1.15)`
+              : 'drop-shadow(0 6px 14px rgba(0,0,0,0.7)) brightness(0.82)',
+            transition: 'filter 0.2s ease',
+          }}
+        >
+          <img
+            src={`/games/mewgenics/${collar.id}.png`}
+            alt={collar.name}
+            draggable={false}
+            style={{
+              width: '100%',
+              aspectRatio: '1 / 1',
+              objectFit: 'contain',
+              imageRendering: 'pixelated',
+            }}
+          />
+        </div>
+
+        {/* Label */}
+        <p
+          className="mt-2 uppercase font-semibold"
+          style={{
+            fontSize: '0.6rem',
+            letterSpacing: '0.1em',
+            color: hovered ? `rgba(${collar.rgb},0.9)` : 'rgba(255,255,255,0.28)',
             transition: 'color 0.2s ease',
-            letterSpacing: '0.12em',
           }}
         >
           {collar.name}
-        </span>
+        </p>
       </div>
     </div>
   )
@@ -114,19 +120,21 @@ export default function Mewgenics() {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   function handleCollarClick(collar: Collar) {
-    // TODO: open tasks popup for this collar
+    // TODO: open tasks popup
     console.log('clicked', collar.name)
   }
 
   return (
     <div className="flex-1 flex flex-col rounded-2xl overflow-hidden" style={{ background: '#0c0c0c' }}>
+      <style>{SWAY_CSS}</style>
+
       {/* Header */}
       <div className="px-7 pt-8 pb-7 shrink-0">
         <div className="flex items-center gap-5">
           <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }}/>
           <div className="text-center">
             <h2 className="text-2xl font-black tracking-[.35em] uppercase" style={{ color: 'rgba(255,255,255,0.92)', letterSpacing: '0.35em' }}>
-              Mewgenics
+              Collar Progress
             </h2>
             <div className="flex items-center justify-center gap-2 mt-2">
               <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }}/>
@@ -142,17 +150,40 @@ export default function Mewgenics() {
         </div>
       </div>
 
-      {/* Collar grid */}
-      <div className="flex-1 px-5 pb-5 grid grid-cols-4 gap-4 min-h-0 content-start">
-        {COLLARS.map((collar) => (
-          <CollarCard
-            key={collar.id}
-            collar={collar}
-            hovered={hoveredId === collar.id}
-            onHover={(v) => setHoveredId(v ? collar.id : null)}
-            onClick={() => handleCollarClick(collar)}
-          />
-        ))}
+      {/* Single rack */}
+      <div className="flex-1 flex flex-col px-4 pb-8 min-h-0">
+        {/* Rack bar */}
+        <div className="relative shrink-0" style={{ height: '16px' }}>
+          <div className="absolute" style={{
+            left: '-4px', top: '-5px', width: '12px', height: '26px',
+            borderRadius: '4px',
+            background: 'linear-gradient(to bottom, #666, #333)',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.6)',
+          }}/>
+          <div className="w-full h-full rounded" style={{
+            background: 'linear-gradient(to bottom, rgba(140,140,140,0.9) 0%, rgba(70,70,70,0.95) 50%, rgba(35,35,35,0.95) 100%)',
+            boxShadow: '0 6px 24px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.4)',
+          }}/>
+          <div className="absolute" style={{
+            right: '-4px', top: '-5px', width: '12px', height: '26px',
+            borderRadius: '4px',
+            background: 'linear-gradient(to bottom, #666, #333)',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.6)',
+          }}/>
+        </div>
+
+        {/* All 12 collars */}
+        <div className="flex flex-1">
+          {COLLARS.map((collar) => (
+            <CollarHanger
+              key={collar.id}
+              collar={collar}
+              hovered={hoveredId === collar.id}
+              onHover={(v) => setHoveredId(v ? collar.id : null)}
+              onClick={() => handleCollarClick(collar)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   )

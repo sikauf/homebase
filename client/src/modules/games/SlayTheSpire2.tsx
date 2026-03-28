@@ -172,10 +172,6 @@ export default function SlayTheSpire2() {
                     fontFamily: "'Kreon', serif",
                     fontWeight: 700,
                     color: '#fff',
-                    textShadow: isHovered
-                      ? `0 0 24px rgba(${cfg.rgb},0.95), 0 0 48px rgba(${cfg.rgb},0.5)`
-                      : `0 0 16px rgba(${cfg.rgb},0.4)`,
-                    transition: 'text-shadow 0.3s ease',
                   }}
                 >
                   {c.max_ascension}
