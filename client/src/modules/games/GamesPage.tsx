@@ -1,8 +1,10 @@
 import { NavLink, Routes, Route, Navigate } from 'react-router-dom'
 import SlayTheSpire2 from './SlayTheSpire2'
+import Mewgenics from './Mewgenics'
 
 const TABS = [
   { label: 'Slay the Spire 2', to: '/games/sts2' },
+  { label: 'Mewgenics', to: '/games/mewgenics' },
 ]
 
 export default function GamesPage() {
@@ -32,6 +34,7 @@ export default function GamesPage() {
         <Routes>
           <Route index element={<Navigate to="sts2" replace />} />
           <Route path="sts2" element={<SlayTheSpire2 />} />
+          <Route path="mewgenics" element={<Mewgenics />} />
         </Routes>
       </div>
     </div>
