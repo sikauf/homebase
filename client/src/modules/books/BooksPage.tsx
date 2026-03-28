@@ -143,7 +143,7 @@ function BookCard({ book, index, hovered, onHover }: {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 110% 65% at 50% -8%, rgba(255,195,65,0.30) 0%, rgba(195,120,30,0.12) 45%, transparent 72%)',
+            background: 'radial-gradient(ellipse 110% 65% at 50% -8%, rgba(255,195,65,0.13) 0%, rgba(195,120,30,0.05) 45%, transparent 72%)',
           }}
         />
 
@@ -195,7 +195,7 @@ function BookCard({ book, index, hovered, onHover }: {
         <div
           className="absolute top-0 left-0 right-0 h-28 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(255,200,80,0.10), transparent 70%)',
+            background: 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(255,200,80,0.05), transparent 70%)',
             opacity: hovered ? 1 : 0,
             transition: 'opacity 0.2s ease',
           }}
