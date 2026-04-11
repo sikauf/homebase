@@ -113,4 +113,148 @@ router.get('/currently-reading', async (_req: Request, res: Response) => {
   res.json(books)
 })
 
+const COMPLETED_QUERY = `{
+  me {
+    user_books(where: { status_id: { _eq: 3 } }, order_by: { user_book_reads_aggregate: { max: { finished_at: desc_nulls_last } } }) {
+      user_book_reads(order_by: { finished_at: desc_nulls_last }, limit: 1) {
+        started_at
+        finished_at
+      }
+      book {
+        title
+        image { url }
+        contributions {
+          author { name }
+        }
+      }
+    }
+  }
+}`
+
+interface HardcoverCompletedBook {
+  user_book_reads: { started_at: string | null; finished_at: string | null }[]
+  book: {
+    title: string
+    image: { url: string } | null
+    contributions: { author: { name: string } }[]
+  }
+}
+
+router.get('/completed', async (_req: Request, res: Response) => {
+  const token = process.env.HARDCOVER_API_TOKEN
+  if (!token) { res.status(503).json({ error: 'HARDCOVER_API_TOKEN not configured' }); return }
+
+  let data: { data?: { me?: { user_books: HardcoverCompletedBook[] }[] }; errors?: { message: string }[] }
+  try {
+    data = await hardcoverQuery<{ me: { user_books: HardcoverCompletedBook[] }[] }>(token, COMPLETED_QUERY)
+  } catch {
+    res.status(503).json({ error: 'Failed to reach Hardcover API' }); return
+  }
+
+  if (data.errors?.length) { res.status(502).json({ error: data.errors[0].message }); return }
+
+  const userBooks = data.data?.me?.[0]?.user_books ?? []
+
+  const books = await Promise.all(userBooks.map(async (ub) => {
+    const cover_url = ub.book.image?.url ?? null
+    let accent_rgb: string | null = null
+    if (cover_url) {
+      try {
+        const palette = await Vibrant.from(cover_url).getPalette()
+        const usable = Object.values(palette)
+          .filter(Boolean)
+          .filter((s) => {
+            const [, sat, light] = s!.hsl
+            return sat > 0.15 && light > 0.2
+          })
+          .sort((a, b) => (b?.population ?? 0) - (a?.population ?? 0))
+        const swatch = usable[0] ?? palette.Vibrant ?? palette.DarkVibrant
+        if (swatch) {
+          const [r, g, b] = swatch.rgb
+          accent_rgb = `${Math.round(r)},${Math.round(g)},${Math.round(b)}`
+        }
+      } catch { /* fall through — client will use a default */ }
+    }
+    const read = ub.user_book_reads[0]
+    return {
+      title: ub.book.title,
+      author: ub.book.contributions[0]?.author.name ?? null,
+      cover_url,
+      accent_rgb,
+      started_at: read?.started_at ?? null,
+      finished_at: read?.finished_at ?? null,
+    }
+  }))
+
+  res.json(books)
+})
+
+const SHELF_QUERY = `{
+  me {
+    user_books(where: { status_id: { _eq: 1 } }, order_by: { id: asc }) {
+      book {
+        title
+        image { url }
+        contributions {
+          author { name }
+        }
+      }
+    }
+  }
+}`
+
+interface HardcoverShelfBook {
+  book: {
+    title: string
+    image: { url: string } | null
+    contributions: { author: { name: string } }[]
+  }
+}
+
+router.get('/shelf', async (_req: Request, res: Response) => {
+  const token = process.env.HARDCOVER_API_TOKEN
+  if (!token) { res.status(503).json({ error: 'HARDCOVER_API_TOKEN not configured' }); return }
+
+  let data: { data?: { me?: { user_books: HardcoverShelfBook[] }[] }; errors?: { message: string }[] }
+  try {
+    data = await hardcoverQuery<{ me: { user_books: HardcoverShelfBook[] }[] }>(token, SHELF_QUERY)
+  } catch {
+    res.status(503).json({ error: 'Failed to reach Hardcover API' }); return
+  }
+
+  if (data.errors?.length) { res.status(502).json({ error: data.errors[0].message }); return }
+
+  const userBooks = data.data?.me?.[0]?.user_books ?? []
+
+  const books = await Promise.all(userBooks.map(async (ub) => {
+    const cover_url = ub.book.image?.url ?? null
+    let accent_rgb: string | null = null
+    if (cover_url) {
+      try {
+        const palette = await Vibrant.from(cover_url).getPalette()
+        const usable = Object.values(palette)
+          .filter(Boolean)
+          .filter((s) => {
+            const [, sat, light] = s!.hsl
+            return sat > 0.15 && light > 0.2
+          })
+          .sort((a, b) => (b?.population ?? 0) - (a?.population ?? 0))
+        const swatch = usable[0] ?? palette.Vibrant ?? palette.DarkVibrant
+        if (swatch) {
+          const [r, g, b] = swatch.rgb
+          accent_rgb = `${Math.round(r)},${Math.round(g)},${Math.round(b)}`
+        }
+      } catch { /* fall through — client will use a default */ }
+    }
+    return {
+      title: ub.book.title,
+      author: ub.book.contributions[0]?.author.name ?? null,
+      cover_url,
+      accent_rgb,
+    }
+  }))
+
+  res.json(books)
+})
+
 export default router

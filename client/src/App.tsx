@@ -14,7 +14,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/golf" element={<GolfPage />} />
           <Route path="/games/*" element={<GamesPage />} />
-          <Route path="/books" element={<BooksPage />} />
+          <Route path="/books/*" element={<BooksPage />} />
         </Routes>
       </div>
     </BrowserRouter>

@@ -221,3 +221,168 @@ describe('GET /api/books/currently-reading', () => {
     }
   })
 })
+
+describe('GET /api/books/completed', () => {
+  it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    delete process.env.HARDCOVER_API_TOKEN
+    const res = await realFetch(`${base}/api/books/completed`)
+    assert.equal(res.status, 503)
+    process.env.HARDCOVER_API_TOKEN = orig
+  })
+
+  it('returns 200 with correctly shaped completed book objects', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{
+          user_books: [{
+            user_book_reads: [{ started_at: '2024-01-05', finished_at: '2024-02-12' }],
+            book: {
+              title: 'Finished Book',
+              image: null,
+              contributions: [{ author: { name: 'Some Author' } }],
+            },
+          }],
+        }],
+      },
+    })
+    try {
+      const res = await realFetch(`${base}/api/books/completed`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as Record<string, unknown>[]
+      assert.equal(body.length, 1)
+      assert.equal(body[0].title, 'Finished Book')
+      assert.equal(body[0].author, 'Some Author')
+      assert.equal(body[0].started_at, '2024-01-05')
+      assert.equal(body[0].finished_at, '2024-02-12')
+      assert.equal(body[0].cover_url, null)
+      assert.equal(body[0].accent_rgb, null)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('returns null dates when no reads recorded', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{
+          user_books: [{
+            user_book_reads: [],
+            book: { title: 'No Dates Book', image: null, contributions: [] },
+          }],
+        }],
+      },
+    })
+    try {
+      const res = await realFetch(`${base}/api/books/completed`)
+      const body = await res.json() as Record<string, unknown>[]
+      assert.equal(body[0].started_at, null)
+      assert.equal(body[0].finished_at, null)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('returns empty array when no completed books', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({ data: { me: [{ user_books: [] }] } })
+    try {
+      const res = await realFetch(`${base}/api/books/completed`)
+      assert.equal(res.status, 200)
+      const body = await res.json()
+      assert.deepEqual(body, [])
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('returns 502 when Hardcover API returns errors', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({ errors: [{ message: 'Unauthorized' }] })
+    try {
+      const res = await realFetch(`${base}/api/books/completed`)
+      assert.equal(res.status, 502)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})
+
+describe('GET /api/books/shelf', () => {
+  it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    delete process.env.HARDCOVER_API_TOKEN
+    const res = await realFetch(`${base}/api/books/shelf`)
+    assert.equal(res.status, 503)
+    process.env.HARDCOVER_API_TOKEN = orig
+  })
+
+  it('returns 200 with correctly shaped shelf book objects', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{
+          user_books: [{
+            book: {
+              title: 'Want To Read Book',
+              image: null,
+              contributions: [{ author: { name: 'Some Author' } }],
+            },
+          }],
+        }],
+      },
+    })
+    try {
+      const res = await realFetch(`${base}/api/books/shelf`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as Record<string, unknown>[]
+      assert.equal(body.length, 1)
+      assert.equal(body[0].title, 'Want To Read Book')
+      assert.equal(body[0].author, 'Some Author')
+      assert.equal(body[0].cover_url, null)
+      assert.equal(body[0].accent_rgb, null)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('returns empty array when shelf is empty', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({ data: { me: [{ user_books: [] }] } })
+    try {
+      const res = await realFetch(`${base}/api/books/shelf`)
+      assert.equal(res.status, 200)
+      const body = await res.json()
+      assert.deepEqual(body, [])
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('returns 502 when Hardcover API returns errors', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({ errors: [{ message: 'Unauthorized' }] })
+    try {
+      const res = await realFetch(`${base}/api/books/shelf`)
+      assert.equal(res.status, 502)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})

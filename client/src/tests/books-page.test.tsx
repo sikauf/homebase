@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import BooksPage from '../modules/books/BooksPage'
+import BooksPage from '../modules/books/CurrentlyReading'
 
 const MOCK_BOOKS = [
   {
@@ -33,10 +33,10 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn()))
 afterEach(() => vi.unstubAllGlobals())
 
 describe('BooksPage', () => {
-  it('renders the Currently Reading header', async () => {
+  it('renders the On the Nightstand header', async () => {
     mockFetch(MOCK_BOOKS)
     render(<BooksPage />)
-    expect(screen.getByText('Currently Reading')).toBeInTheDocument()
+    expect(screen.getByText('On the Nightstand')).toBeInTheDocument()
   })
 
   it('shows skeleton cards while loading', () => {
