@@ -1,0 +1,102 @@
+import { describe, it, before, after } from 'node:test'
+import assert from 'node:assert/strict'
+import http from 'node:http'
+import { createApp } from '../app'
+
+let server: http.Server
+let base: string
+
+before(() => new Promise<void>((resolve) => {
+  server = createApp().listen(0, () => {
+    base = `http://localhost:${(server.address() as { port: number }).port}`
+    resolve()
+  })
+}))
+
+after(() => new Promise<void>((resolve, reject) => {
+  server.close((err) => err ? reject(err) : resolve())
+}))
+
+describe('GET /api/clean/days', () => {
+  it('returns an empty array when no days are marked', async () => {
+    const res = await fetch(`${base}/api/clean/days`)
+    assert.equal(res.status, 200)
+    const body = await res.json()
+    assert.deepEqual(body, [])
+  })
+})
+
+describe('POST /api/clean/days', () => {
+  it('marks a day and returns it', async () => {
+    const res = await fetch(`${base}/api/clean/days`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: '2026-01-15' }),
+    })
+    assert.equal(res.status, 201)
+    const body = await res.json() as Record<string, unknown>
+    assert.equal(body.date, '2026-01-15')
+  })
+
+  it('returns 400 when date is missing', async () => {
+    const res = await fetch(`${base}/api/clean/days`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    assert.equal(res.status, 400)
+  })
+
+  it('returns 400 when date format is invalid', async () => {
+    const res = await fetch(`${base}/api/clean/days`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: 'not-a-date' }),
+    })
+    assert.equal(res.status, 400)
+  })
+
+  it('is idempotent — marking the same day twice does not error', async () => {
+    const opts = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: '2026-02-01' }),
+    }
+    await fetch(`${base}/api/clean/days`, opts)
+    const res = await fetch(`${base}/api/clean/days`, opts)
+    assert.equal(res.status, 201)
+  })
+})
+
+describe('DELETE /api/clean/days/:date', () => {
+  it('unmarks a previously marked day', async () => {
+    await fetch(`${base}/api/clean/days`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: '2026-03-10' }),
+    })
+    const res = await fetch(`${base}/api/clean/days/2026-03-10`, { method: 'DELETE' })
+    assert.equal(res.status, 204)
+  })
+
+  it('returns 404 when deleting a date that was never marked', async () => {
+    const res = await fetch(`${base}/api/clean/days/2026-12-31`, { method: 'DELETE' })
+    assert.equal(res.status, 404)
+  })
+})
+
+describe('GET /api/clean/days after mutations', () => {
+  it('returns all marked dates sorted ascending', async () => {
+    const res = await fetch(`${base}/api/clean/days`)
+    assert.equal(res.status, 200)
+    const body = await res.json() as string[]
+    // Dates inserted in earlier tests: 2026-01-15, 2026-02-01 (2026-03-10 was deleted)
+    assert.ok(body.includes('2026-01-15'))
+    assert.ok(body.includes('2026-02-01'))
+    assert.ok(!body.includes('2026-03-10'))
+    // Verify sorted
+    for (let i = 1; i < body.length; i++) {
+      assert.ok(body[i] >= body[i - 1])
+    }
+  })
+})

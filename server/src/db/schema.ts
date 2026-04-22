@@ -16,6 +16,29 @@ export function initSchema() {
     );
   `)
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS clean_days (
+      date TEXT PRIMARY KEY
+    );
+  `)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS fitness_workouts (
+      date TEXT NOT NULL,
+      type TEXT NOT NULL,
+      PRIMARY KEY (date, type)
+    );
+  `)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS book_accent_cache (
+      cover_url  TEXT PRIMARY KEY,
+      accent_rgb TEXT
+    );
+  `)
+}
+
+export function seedDemoData() {
   const row = db.prepare('SELECT COUNT(*) as n FROM golf_rounds').get() as { n: number }
   if (row.n === 0) {
     const insert = db.prepare(`

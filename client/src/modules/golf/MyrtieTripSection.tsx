@@ -7,8 +7,6 @@ const COURSES = [
 ]
 
 export default function MyrtieTripSection() {
-  const days = Math.ceil((TRIP_DATE.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-
   return (
     <div
       className="mb-8 rounded-2xl overflow-hidden grid"
@@ -20,7 +18,7 @@ export default function MyrtieTripSection() {
           className="text-xs tracking-[.5em] uppercase mb-4"
           style={{ color: 'rgba(255,255,255,0.3)' }}
         >
-          Upcoming Trip
+          Completed Trip
         </p>
         <h3 className="text-3xl font-black tracking-tight text-white leading-none mb-1">
           Myrtle Beach
@@ -31,25 +29,12 @@ export default function MyrtieTripSection() {
         >
           South Carolina · Apr 17, 2026
         </p>
-        <div className="flex items-baseline gap-2">
-          <span
-            className="text-white leading-none"
-            style={{
-              fontFamily: "'Kreon', serif",
-              fontSize: '5.5rem',
-              fontWeight: 700,
-              lineHeight: 1,
-            }}
-          >
-            {days}
-          </span>
-          <span
-            className="text-xs tracking-[.35em] uppercase"
-            style={{ color: 'rgba(255,255,255,0.4)' }}
-          >
-            days away
-          </span>
-        </div>
+        <p
+          className="text-xs tracking-[.2em] uppercase"
+          style={{ color: 'rgba(255,255,255,0.25)' }}
+        >
+          Trip complete
+        </p>
       </div>
 
       {/* Three course images */}

@@ -69,10 +69,10 @@ function BookCard({ book, index, hovered, onHover }: {
       rel="noopener noreferrer"
       className="relative rounded-xl overflow-hidden flex flex-col cursor-pointer select-none"
       style={{
-        background: '#110c07',
-        border: `1px solid ${hovered ? `rgba(255,185,50,0.35)` : 'rgba(255,255,255,0.05)'}`,
+        background: '#0e0e0f',
+        border: `1px solid ${hovered ? `rgba(160,165,185,0.35)` : 'rgba(255,255,255,0.05)'}`,
         boxShadow: hovered
-          ? `0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,185,50,0.12), 0 4px 20px rgba(${slot.rgb},0.2)`
+          ? `0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(160,165,185,0.12), 0 4px 20px rgba(${slot.rgb},0.2)`
           : '0 4px 20px rgba(0,0,0,0.7)',
         transform: hovered ? 'translateY(-6px)' : 'translateY(0)',
         transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
@@ -136,14 +136,13 @@ function BookCard({ book, index, hovered, onHover }: {
 
       {/* Cover art */}
       <div className="flex-1 relative overflow-hidden min-h-0">
-        {/* Mahogany / dark leather base */}
-        <div className="absolute inset-0" style={{ background: '#110c07' }} />
+        <div className="absolute inset-0" style={{ background: '#0e0e0f' }} />
 
-        {/* Overhead reading-lamp bloom — warm amber from above */}
+        {/* Overhead bloom */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 110% 65% at 50% -8%, rgba(255,195,65,0.13) 0%, rgba(195,120,30,0.05) 45%, transparent 72%)',
+            background: 'radial-gradient(ellipse 110% 65% at 50% -8%, rgba(200,210,230,0.07) 0%, rgba(150,160,180,0.03) 45%, transparent 72%)',
           }}
         />
 
@@ -191,11 +190,11 @@ function BookCard({ book, index, hovered, onHover }: {
           </div>
         )}
 
-        {/* Warm lamp flare on hover */}
+        {/* Hover flare */}
         <div
           className="absolute top-0 left-0 right-0 h-28 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(255,200,80,0.05), transparent 70%)',
+            background: 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(180,190,210,0.05), transparent 70%)',
             opacity: hovered ? 1 : 0,
             transition: 'opacity 0.2s ease',
           }}
@@ -204,7 +203,7 @@ function BookCard({ book, index, hovered, onHover }: {
         {/* Bottom fade into panel */}
         <div
           className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-          style={{ background: 'linear-gradient(to bottom, transparent, #0d0904)' }}
+          style={{ background: 'linear-gradient(to bottom, transparent, #0c0c0e)' }}
         />
       </div>
 
@@ -212,16 +211,16 @@ function BookCard({ book, index, hovered, onHover }: {
       <div
         className="shrink-0 relative flex flex-col gap-2"
         style={{
-          background: '#0d0904',
+          background: '#0c0c0e',
           padding: '14px 42px 18px 14px',
-          borderTop: '1px solid rgba(255,185,50,0.18)',
+          borderTop: '1px solid rgba(160,165,185,0.12)',
         }}
       >
-        {/* Warm tint on hover */}
+        {/* Tint on hover */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `linear-gradient(to right, rgba(255,185,50,0.04), rgba(${slot.rgb},0.06))`,
+            background: `linear-gradient(to right, rgba(160,165,185,0.03), rgba(${slot.rgb},0.06))`,
             opacity: hovered ? 1 : 0,
             transition: 'opacity 0.3s ease',
           }}

@@ -12,7 +12,8 @@ const navItems: NavItem[] = [
   { label: 'Golf', to: '/golf', icon: '⛳' },
   { label: 'Games', to: '/games', icon: '🎮' },
   { label: 'Books', to: '/books', icon: '📚' },
-  { label: 'Fitness', icon: '💪', disabled: true },
+  { label: 'Clean', to: '/clean', icon: '🌿' },
+  { label: 'Fitness', to: '/fitness', icon: '💪' },
 ]
 
 export default function Sidebar() {
