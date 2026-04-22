@@ -52,6 +52,26 @@ Apply `dark` prop to `PageWrapper` for any new page. Never default to light (`bg
 
 Image and other static assets always live inside the repo at `client/public/<module>/<subfolder>/` (e.g. `client/public/games/sts2/`, `client/public/golf/myrtle/`). They are served directly by Vite's static file server and referenced in code as absolute paths (e.g. `/golf/myrtle/photo.jpg`). When a user provides an asset folder from outside the repo, copy it into the appropriate `client/public/` subdirectory and delete (or ask to delete) the original. Never reference files outside the repo.
 
+## Golf course pictures
+
+Course images for the Golf module live in `client/public/golf/courses/` and are registered in `client/src/modules/golf/courseImages.ts`. Each registry entry maps a canonical course `name` (plus optional `aliases`) to an image path. The registry powers both the image banner on `RoundCard` and the autocomplete dropdown in `AddRoundModal`.
+
+**Trigger phrase — "golf course cleanup" (also accepts "golf picture cleanup"):** the user drops new image files directly in the repo root (e.g. `homebase/bergen_point.jpeg`). When the user says the trigger phrase:
+
+1. Find all loose image files (`.jpg`, `.jpeg`, `.png`, `.webp`) in the repo root.
+2. For each loose file, check if it is a **duplicate** of an existing registered course. A loose image is a duplicate if the course name inferred from its filename matches an existing registry entry's `name` or any of its `aliases` (case-insensitive, punctuation-ignored). If so:
+   - Delete the old image file from `client/public/golf/courses/`.
+   - Move the new file in (replacing the old).
+   - Update the registry entry's `image` path if the extension or filename changed.
+   - Do NOT create a new registry entry — the old one is being refreshed in place.
+3. For each non-duplicate, move the file into `client/public/golf/courses/` and add a new entry to `courseImages.ts`. Normalize the filename when moving: lowercase, snake_case, no spaces or punctuation other than underscores and a single extension (e.g. `Lido Beach.JPG` → `lido_beach.jpg`). The registry entry should use:
+   - `name`: canonical course name inferred from the filename (e.g. `bergen_point.jpeg` → "Bergen Point"). If ambiguous, ask before adding.
+   - `image`: the `/golf/courses/<filename>` path.
+   - `aliases`: any obvious variants (e.g. "<Name> Golf Course", "<Name> Country Club", abbreviations).
+   - Leave `objectPosition` unset unless the image clearly needs adjustment.
+4. This registration is what puts the course into the `AddRoundModal` autocomplete — do not skip it.
+5. Report back with the list of courses added and any duplicates replaced so the user can sanity-check.
+
 ## Adding a new module
 
 1. Add server routes in `server/src/routes/<name>.ts`

@@ -1,4 +1,5 @@
 import type { GolfRound } from '../../types/golf'
+import { getCourseImage } from './courseImages'
 
 interface RoundCardProps {
   round: GolfRound
@@ -12,12 +13,11 @@ function scoreDiff(score: number | null, par: number): string | null {
   return diff > 0 ? `+${diff}` : `${diff}`
 }
 
-function scoreBadgeStyle(score: number | null, par: number): React.CSSProperties {
+function scoreBadgeStyle(score: number | null, _par: number): React.CSSProperties {
   if (score == null) return { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }
-  const diff = score - par
-  if (diff <= 0) return { background: 'rgba(74,222,128,0.15)', color: '#4ade80' }
-  if (diff <= 5) return { background: 'rgba(250,204,21,0.15)', color: '#facc15' }
-  return { background: 'rgba(248,113,113,0.15)', color: '#f87171' }
+  if (score > 100) return { background: 'rgba(248,113,113,0.15)', color: '#f87171' }
+  if (score >= 90) return { background: 'rgba(250,204,21,0.15)', color: '#facc15' }
+  return { background: 'rgba(74,222,128,0.15)', color: '#4ade80' }
 }
 
 function formatDate(dateStr: string): string {
@@ -31,9 +31,25 @@ function formatDate(dateStr: string): string {
 export default function RoundCard({ round, onDelete }: RoundCardProps) {
   const diff = scoreDiff(round.score, round.par)
   const badgeStyle = scoreBadgeStyle(round.score, round.par)
+  const courseImage = getCourseImage(round.course)
 
   return (
-    <div className="rounded-xl p-5" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}>
+      {courseImage && (
+        <div className="relative w-full overflow-hidden" style={{ height: '120px' }}>
+          <img
+            src={courseImage.image}
+            alt={round.course}
+            className="w-full h-full object-cover"
+            style={{ objectPosition: courseImage.objectPosition ?? '50% 50%' }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.0) 40%, rgba(26,26,26,0.85) 100%)' }}
+          />
+        </div>
+      )}
+      <div className="p-5">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1">
@@ -109,6 +125,7 @@ export default function RoundCard({ round, onDelete }: RoundCardProps) {
       {round.notes && (
         <p className="mt-3 text-sm italic" style={{ color: 'rgba(255,255,255,0.35)' }}>"{round.notes}"</p>
       )}
+      </div>
     </div>
   )
 }
