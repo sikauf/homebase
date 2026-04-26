@@ -14,7 +14,7 @@ export default function App() {
         <Sidebar />
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/golf" element={<GolfPage />} />
+          <Route path="/golf/*" element={<GolfPage />} />
           <Route path="/games/*" element={<GamesPage />} />
           <Route path="/books/*" element={<BooksPage />} />
           <Route path="/clean" element={<CleanPage />} />

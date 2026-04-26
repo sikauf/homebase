@@ -1,25 +1,36 @@
 import { Router, Request, Response } from 'express'
 import db from '../db/client'
 
+const SELECT_ALL_ROUNDS = db.prepare('SELECT * FROM golf_rounds ORDER BY played_at DESC')
+const SELECT_STATS = db.prepare(
+  `SELECT
+    COUNT(*) as total_rounds,
+    MIN(score) as best_score,
+    ROUND(AVG(score), 1) as avg_score,
+    ROUND(AVG(putts), 1) as avg_putts,
+    ROUND(AVG(gir), 1) as avg_gir,
+    ROUND(AVG(fairways), 1) as avg_fairways
+  FROM golf_rounds`
+)
+const SELECT_ROUND = db.prepare('SELECT * FROM golf_rounds WHERE id = ?')
+const INSERT_ROUND = db.prepare(
+  `INSERT INTO golf_rounds (course, tees, score, par, fairways, gir, putts, notes, played_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+)
+const DELETE_ROUND = db.prepare('DELETE FROM golf_rounds WHERE id = ?')
+
+const SELECT_ALL_RANGE_DAYS = db.prepare('SELECT date FROM golf_range_days ORDER BY date ASC')
+const INSERT_RANGE_DAY = db.prepare('INSERT OR IGNORE INTO golf_range_days (date) VALUES (?)')
+const DELETE_RANGE_DAY = db.prepare('DELETE FROM golf_range_days WHERE date = ?')
+
 const router = Router()
 
 router.get('/rounds', (_req: Request, res: Response) => {
-  const rounds = db.prepare('SELECT * FROM golf_rounds ORDER BY played_at DESC').all()
-  res.json(rounds)
+  res.json(SELECT_ALL_ROUNDS.all())
 })
 
 router.get('/stats', (_req: Request, res: Response) => {
-  const stats = db.prepare(
-    `SELECT
-      COUNT(*) as total_rounds,
-      MIN(score) as best_score,
-      ROUND(AVG(score), 1) as avg_score,
-      ROUND(AVG(putts), 1) as avg_putts,
-      ROUND(AVG(gir), 1) as avg_gir,
-      ROUND(AVG(fairways), 1) as avg_fairways
-    FROM golf_rounds`
-  ).get()
-  res.json(stats)
+  res.json(SELECT_STATS.get())
 })
 
 router.post('/rounds', (req: Request, res: Response) => {
@@ -40,18 +51,15 @@ router.post('/rounds', (req: Request, res: Response) => {
     return
   }
 
-  const result = db.prepare(
-    `INSERT INTO golf_rounds (course, tees, score, par, fairways, gir, putts, notes, played_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(course, tees ?? null, score ?? null, par ?? 72, fairways ?? null, gir ?? null, putts ?? null, notes ?? null, played_at ?? null)
+  const result = INSERT_ROUND.run(course, tees ?? null, score ?? null, par ?? 72, fairways ?? null, gir ?? null, putts ?? null, notes ?? null, played_at ?? null)
 
-  const round = db.prepare('SELECT * FROM golf_rounds WHERE id = ?').get(result.lastInsertRowid)
+  const round = SELECT_ROUND.get(result.lastInsertRowid)
   res.status(201).json(round)
 })
 
 router.patch('/rounds/:id', (req: Request, res: Response) => {
   const id = Number(req.params.id)
-  const existing = db.prepare('SELECT * FROM golf_rounds WHERE id = ?').get(id)
+  const existing = SELECT_ROUND.get(id)
 
   if (!existing) {
     res.status(404).json({ error: 'Round not found' })
@@ -71,18 +79,39 @@ router.patch('/rounds/:id', (req: Request, res: Response) => {
   const values = keys.map((k) => body[k]) as (string | number | null | bigint | Uint8Array)[]
 
   db.prepare(`UPDATE golf_rounds SET ${setClause} WHERE id = ?`).run(...values, id)
-  const round = db.prepare('SELECT * FROM golf_rounds WHERE id = ?').get(id)
+  const round = SELECT_ROUND.get(id)
   res.json(round)
 })
 
 router.delete('/rounds/:id', (req: Request, res: Response) => {
   const id = Number(req.params.id)
-  const result = db.prepare('DELETE FROM golf_rounds WHERE id = ?').run(id)
+  const result = DELETE_ROUND.run(id)
   if (result.changes === 0) {
     res.status(404).json({ error: 'Round not found' })
     return
   }
   res.status(204).send()
+})
+
+router.get('/range-days', (_req: Request, res: Response) => {
+  const rows = SELECT_ALL_RANGE_DAYS.all() as { date: string }[]
+  res.json(rows.map((r) => r.date))
+})
+
+router.post('/range-days', (req: Request, res: Response) => {
+  const { date } = req.body
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    res.status(400).json({ error: 'date is required and must be YYYY-MM-DD' }); return
+  }
+  INSERT_RANGE_DAY.run(date)
+  res.status(201).json({ date })
+})
+
+router.delete('/range-days/:date', (req: Request, res: Response) => {
+  const { date } = req.params
+  const result = DELETE_RANGE_DAY.run(date)
+  if (result.changes === 0) { res.status(404).json({ error: 'Date not found' }); return }
+  res.status(204).end()
 })
 
 export default router

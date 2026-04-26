@@ -1,25 +1,12 @@
-import { describe, it, before, after } from 'node:test'
+import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import http from 'node:http'
-import { createApp } from '../app'
+import { setupTestServer } from './helpers'
 
-let server: http.Server
-let base: string
-
-before(() => new Promise<void>((resolve) => {
-  server = createApp().listen(0, () => {
-    base = `http://localhost:${(server.address() as { port: number }).port}`
-    resolve()
-  })
-}))
-
-after(() => new Promise<void>((resolve, reject) => {
-  server.close((err) => err ? reject(err) : resolve())
-}))
+const baseUrl = setupTestServer()
 
 describe('GET /api/fitness/workouts', () => {
   it('returns an empty array when no workouts are logged', async () => {
-    const res = await fetch(`${base}/api/fitness/workouts`)
+    const res = await fetch(`${baseUrl()}/api/fitness/workouts`)
     assert.equal(res.status, 200)
     assert.deepEqual(await res.json(), [])
   })
@@ -27,7 +14,7 @@ describe('GET /api/fitness/workouts', () => {
 
 describe('POST /api/fitness/workouts', () => {
   it('logs a workout and returns it', async () => {
-    const res = await fetch(`${base}/api/fitness/workouts`, {
+    const res = await fetch(`${baseUrl()}/api/fitness/workouts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: '2026-01-15', type: 'core' }),
@@ -40,7 +27,7 @@ describe('POST /api/fitness/workouts', () => {
 
   it('can log multiple types on the same day', async () => {
     for (const type of ['cardio', 'legs']) {
-      const res = await fetch(`${base}/api/fitness/workouts`, {
+      const res = await fetch(`${baseUrl()}/api/fitness/workouts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: '2026-01-15', type }),
@@ -50,7 +37,7 @@ describe('POST /api/fitness/workouts', () => {
   })
 
   it('returns 400 when date is missing', async () => {
-    const res = await fetch(`${base}/api/fitness/workouts`, {
+    const res = await fetch(`${baseUrl()}/api/fitness/workouts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'core' }),
@@ -59,7 +46,7 @@ describe('POST /api/fitness/workouts', () => {
   })
 
   it('returns 400 when date format is invalid', async () => {
-    const res = await fetch(`${base}/api/fitness/workouts`, {
+    const res = await fetch(`${baseUrl()}/api/fitness/workouts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: 'not-a-date', type: 'core' }),
@@ -68,7 +55,7 @@ describe('POST /api/fitness/workouts', () => {
   })
 
   it('returns 400 when type is invalid', async () => {
-    const res = await fetch(`${base}/api/fitness/workouts`, {
+    const res = await fetch(`${baseUrl()}/api/fitness/workouts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: '2026-01-15', type: 'badtype' }),
@@ -82,32 +69,32 @@ describe('POST /api/fitness/workouts', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: '2026-02-01', type: 'biceps' }),
     }
-    await fetch(`${base}/api/fitness/workouts`, opts)
-    const res = await fetch(`${base}/api/fitness/workouts`, opts)
+    await fetch(`${baseUrl()}/api/fitness/workouts`, opts)
+    const res = await fetch(`${baseUrl()}/api/fitness/workouts`, opts)
     assert.equal(res.status, 201)
   })
 })
 
 describe('DELETE /api/fitness/workouts/:date/:type', () => {
   it('removes a logged workout', async () => {
-    await fetch(`${base}/api/fitness/workouts`, {
+    await fetch(`${baseUrl()}/api/fitness/workouts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: '2026-03-10', type: 'back' }),
     })
-    const res = await fetch(`${base}/api/fitness/workouts/2026-03-10/back`, { method: 'DELETE' })
+    const res = await fetch(`${baseUrl()}/api/fitness/workouts/2026-03-10/back`, { method: 'DELETE' })
     assert.equal(res.status, 204)
   })
 
   it('returns 404 when workout was never logged', async () => {
-    const res = await fetch(`${base}/api/fitness/workouts/2026-12-31/chest`, { method: 'DELETE' })
+    const res = await fetch(`${baseUrl()}/api/fitness/workouts/2026-12-31/chest`, { method: 'DELETE' })
     assert.equal(res.status, 404)
   })
 })
 
 describe('GET /api/fitness/workouts after mutations', () => {
   it('returns all logged workouts sorted by date', async () => {
-    const res = await fetch(`${base}/api/fitness/workouts`)
+    const res = await fetch(`${baseUrl()}/api/fitness/workouts`)
     assert.equal(res.status, 200)
     const body = await res.json() as { date: string; type: string }[]
     const types2026_01_15 = body.filter(r => r.date === '2026-01-15').map(r => r.type)

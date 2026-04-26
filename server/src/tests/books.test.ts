@@ -1,22 +1,9 @@
-import { describe, it, before, after } from 'node:test'
+import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import http from 'node:http'
-import { createApp } from '../app'
+import { setupTestServer } from './helpers'
 
-let server: http.Server
-let base: string
+const baseUrl = setupTestServer()
 const realFetch = globalThis.fetch
-
-before(() => new Promise<void>((resolve) => {
-  server = createApp().listen(0, () => {
-    base = `http://localhost:${(server.address() as { port: number }).port}`
-    resolve()
-  })
-}))
-
-after(() => new Promise<void>((resolve, reject) => {
-  server.close((err) => err ? reject(err) : resolve())
-}))
 
 function mockHardcover(payload: unknown) {
   globalThis.fetch = async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
@@ -31,7 +18,7 @@ describe('GET /api/books/profile', () => {
   it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
     const orig = process.env.HARDCOVER_API_TOKEN
     delete process.env.HARDCOVER_API_TOKEN
-    const res = await realFetch(`${base}/api/books/profile`)
+    const res = await realFetch(`${baseUrl()}/api/books/profile`)
     assert.equal(res.status, 503)
     process.env.HARDCOVER_API_TOKEN = orig
   })
@@ -41,7 +28,7 @@ describe('GET /api/books/currently-reading', () => {
   it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
     const orig = process.env.HARDCOVER_API_TOKEN
     delete process.env.HARDCOVER_API_TOKEN
-    const res = await realFetch(`${base}/api/books/currently-reading`)
+    const res = await realFetch(`${baseUrl()}/api/books/currently-reading`)
     assert.equal(res.status, 503)
     process.env.HARDCOVER_API_TOKEN = orig
   })
@@ -65,7 +52,7 @@ describe('GET /api/books/currently-reading', () => {
       },
     })
     try {
-      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const res = await realFetch(`${baseUrl()}/api/books/currently-reading`)
       assert.equal(res.status, 200)
       const body = await res.json() as Record<string, unknown>[]
       assert.equal(body.length, 1)
@@ -95,7 +82,7 @@ describe('GET /api/books/currently-reading', () => {
       },
     })
     try {
-      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const res = await realFetch(`${baseUrl()}/api/books/currently-reading`)
       const body = await res.json() as Record<string, unknown>[]
       assert.equal(body[0].accent_rgb, null)
     } finally {
@@ -123,7 +110,7 @@ describe('GET /api/books/currently-reading', () => {
       },
     })
     try {
-      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const res = await realFetch(`${baseUrl()}/api/books/currently-reading`)
       const body = await res.json() as Record<string, unknown>[]
       assert.equal(body[0].pages, 512, 'should use edition page count, not book page count')
     } finally {
@@ -151,7 +138,7 @@ describe('GET /api/books/currently-reading', () => {
       },
     })
     try {
-      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const res = await realFetch(`${baseUrl()}/api/books/currently-reading`)
       const body = await res.json() as Record<string, unknown>[]
       assert.equal(body[0].pages, 300, 'should fall back to book page count when edition is null')
     } finally {
@@ -184,7 +171,7 @@ describe('GET /api/books/currently-reading', () => {
       },
     })
     try {
-      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const res = await realFetch(`${baseUrl()}/api/books/currently-reading`)
       const body = await res.json() as Record<string, unknown>[]
       assert.equal(body[0].progress_pages, 200, 'should use the most recent read progress, not an older re-read')
     } finally {
@@ -198,7 +185,7 @@ describe('GET /api/books/currently-reading', () => {
     process.env.HARDCOVER_API_TOKEN = 'test-token'
     mockHardcover({ data: { me: [{ user_books: [] }] } })
     try {
-      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const res = await realFetch(`${baseUrl()}/api/books/currently-reading`)
       assert.equal(res.status, 200)
       const body = await res.json()
       assert.deepEqual(body, [])
@@ -213,7 +200,7 @@ describe('GET /api/books/currently-reading', () => {
     process.env.HARDCOVER_API_TOKEN = 'test-token'
     mockHardcover({ errors: [{ message: 'Unauthorized' }] })
     try {
-      const res = await realFetch(`${base}/api/books/currently-reading`)
+      const res = await realFetch(`${baseUrl()}/api/books/currently-reading`)
       assert.equal(res.status, 502)
     } finally {
       process.env.HARDCOVER_API_TOKEN = orig
@@ -226,7 +213,7 @@ describe('GET /api/books/completed', () => {
   it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
     const orig = process.env.HARDCOVER_API_TOKEN
     delete process.env.HARDCOVER_API_TOKEN
-    const res = await realFetch(`${base}/api/books/completed`)
+    const res = await realFetch(`${baseUrl()}/api/books/completed`)
     assert.equal(res.status, 503)
     process.env.HARDCOVER_API_TOKEN = orig
   })
@@ -249,7 +236,7 @@ describe('GET /api/books/completed', () => {
       },
     })
     try {
-      const res = await realFetch(`${base}/api/books/completed`)
+      const res = await realFetch(`${baseUrl()}/api/books/completed`)
       assert.equal(res.status, 200)
       const body = await res.json() as Record<string, unknown>[]
       assert.equal(body.length, 1)
@@ -279,7 +266,7 @@ describe('GET /api/books/completed', () => {
       },
     })
     try {
-      const res = await realFetch(`${base}/api/books/completed`)
+      const res = await realFetch(`${baseUrl()}/api/books/completed`)
       const body = await res.json() as Record<string, unknown>[]
       assert.equal(body[0].started_at, null)
       assert.equal(body[0].finished_at, null)
@@ -294,7 +281,7 @@ describe('GET /api/books/completed', () => {
     process.env.HARDCOVER_API_TOKEN = 'test-token'
     mockHardcover({ data: { me: [{ user_books: [] }] } })
     try {
-      const res = await realFetch(`${base}/api/books/completed`)
+      const res = await realFetch(`${baseUrl()}/api/books/completed`)
       assert.equal(res.status, 200)
       const body = await res.json()
       assert.deepEqual(body, [])
@@ -309,7 +296,7 @@ describe('GET /api/books/completed', () => {
     process.env.HARDCOVER_API_TOKEN = 'test-token'
     mockHardcover({ errors: [{ message: 'Unauthorized' }] })
     try {
-      const res = await realFetch(`${base}/api/books/completed`)
+      const res = await realFetch(`${baseUrl()}/api/books/completed`)
       assert.equal(res.status, 502)
     } finally {
       process.env.HARDCOVER_API_TOKEN = orig
@@ -322,7 +309,7 @@ describe('GET /api/books/shelf', () => {
   it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
     const orig = process.env.HARDCOVER_API_TOKEN
     delete process.env.HARDCOVER_API_TOKEN
-    const res = await realFetch(`${base}/api/books/shelf`)
+    const res = await realFetch(`${baseUrl()}/api/books/shelf`)
     assert.equal(res.status, 503)
     process.env.HARDCOVER_API_TOKEN = orig
   })
@@ -344,7 +331,7 @@ describe('GET /api/books/shelf', () => {
       },
     })
     try {
-      const res = await realFetch(`${base}/api/books/shelf`)
+      const res = await realFetch(`${baseUrl()}/api/books/shelf`)
       assert.equal(res.status, 200)
       const body = await res.json() as Record<string, unknown>[]
       assert.equal(body.length, 1)
@@ -363,7 +350,7 @@ describe('GET /api/books/shelf', () => {
     process.env.HARDCOVER_API_TOKEN = 'test-token'
     mockHardcover({ data: { me: [{ user_books: [] }] } })
     try {
-      const res = await realFetch(`${base}/api/books/shelf`)
+      const res = await realFetch(`${baseUrl()}/api/books/shelf`)
       assert.equal(res.status, 200)
       const body = await res.json()
       assert.deepEqual(body, [])
@@ -378,7 +365,7 @@ describe('GET /api/books/shelf', () => {
     process.env.HARDCOVER_API_TOKEN = 'test-token'
     mockHardcover({ errors: [{ message: 'Unauthorized' }] })
     try {
-      const res = await realFetch(`${base}/api/books/shelf`)
+      const res = await realFetch(`${baseUrl()}/api/books/shelf`)
       assert.equal(res.status, 502)
     } finally {
       process.env.HARDCOVER_API_TOKEN = orig

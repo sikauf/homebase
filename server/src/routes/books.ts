@@ -2,8 +2,11 @@ import { Router, Request, Response } from 'express'
 import { Vibrant } from 'node-vibrant/node'
 import db from '../db/client'
 
+const SELECT_ACCENT = db.prepare('SELECT accent_rgb FROM book_accent_cache WHERE cover_url = ?')
+const UPSERT_ACCENT = db.prepare('INSERT OR REPLACE INTO book_accent_cache (cover_url, accent_rgb) VALUES (?, ?)')
+
 async function getAccentRgb(cover_url: string): Promise<string | null> {
-  const cached = db.prepare('SELECT accent_rgb FROM book_accent_cache WHERE cover_url = ?').get(cover_url) as { accent_rgb: string | null } | undefined
+  const cached = SELECT_ACCENT.get(cover_url) as { accent_rgb: string | null } | undefined
   if (cached !== undefined) return cached.accent_rgb
 
   let accent_rgb: string | null = null
@@ -23,7 +26,7 @@ async function getAccentRgb(cover_url: string): Promise<string | null> {
     }
   } catch { /* fall through — client will use a default */ }
 
-  db.prepare('INSERT OR REPLACE INTO book_accent_cache (cover_url, accent_rgb) VALUES (?, ?)').run(cover_url, accent_rgb)
+  UPSERT_ACCENT.run(cover_url, accent_rgb)
   return accent_rgb
 }
 

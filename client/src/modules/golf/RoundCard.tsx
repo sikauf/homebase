@@ -13,7 +13,7 @@ function scoreDiff(score: number | null, par: number): string | null {
   return diff > 0 ? `+${diff}` : `${diff}`
 }
 
-function scoreBadgeStyle(score: number | null, _par: number): React.CSSProperties {
+function scoreBadgeStyle(score: number | null): React.CSSProperties {
   if (score == null) return { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }
   if (score > 100) return { background: 'rgba(248,113,113,0.15)', color: '#f87171' }
   if (score >= 90) return { background: 'rgba(250,204,21,0.15)', color: '#facc15' }
@@ -30,7 +30,7 @@ function formatDate(dateStr: string): string {
 
 export default function RoundCard({ round, onDelete }: RoundCardProps) {
   const diff = scoreDiff(round.score, round.par)
-  const badgeStyle = scoreBadgeStyle(round.score, round.par)
+  const badgeStyle = scoreBadgeStyle(round.score)
   const courseImage = getCourseImage(round.course)
 
   return (

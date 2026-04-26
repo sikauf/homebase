@@ -1,5 +1,3 @@
-const TRIP_DATE = new Date('2026-04-17T00:00:00')
-
 const COURSES = [
   { name: 'South Creek',   image: '/golf/courses/south_creek.webp', objPos: '50% 50%' },
   { name: 'Glen Dornoch',  image: '/golf/courses/glen_donorch.jpg', objPos: '50% 40%' },

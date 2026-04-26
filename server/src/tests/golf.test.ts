@@ -1,48 +1,21 @@
-import { describe, it, before, after } from 'node:test'
+import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import http from 'node:http'
-import { createApp } from '../app'
-import db from '../db/client'
+import { setupTestServer } from './helpers'
 
-// Create schema on the in-memory DB (DB_PATH=:memory: set by test script)
-before(() => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS golf_rounds (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      course TEXT NOT NULL, tees TEXT, score INTEGER, par INTEGER DEFAULT 72,
-      fairways INTEGER, gir INTEGER, putts INTEGER, notes TEXT,
-      played_at TEXT DEFAULT (datetime('now'))
-    )
-  `)
-})
+const baseUrl = setupTestServer()
 
-const app = createApp()
-let server: http.Server
-let base: string
-
-before(() => new Promise<void>((resolve) => {
-  server = app.listen(0, () => {
-    base = `http://localhost:${(server.address() as { port: number }).port}`
-    resolve()
-  })
-}))
-
-after(() => new Promise<void>((resolve, reject) => {
-  server.close((err) => err ? reject(err) : resolve())
-}))
-
-async function get(path: string) { return fetch(`${base}${path}`) }
+async function get(path: string) { return fetch(`${baseUrl()}${path}`) }
 async function post(path: string, body: unknown) {
-  return fetch(`${base}${path}`, {
+  return fetch(`${baseUrl()}${path}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   })
 }
 async function patch(path: string, body: unknown) {
-  return fetch(`${base}${path}`, {
+  return fetch(`${baseUrl()}${path}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   })
 }
-async function del(path: string) { return fetch(`${base}${path}`, { method: 'DELETE' }) }
+async function del(path: string) { return fetch(`${baseUrl()}${path}`, { method: 'DELETE' }) }
 
 describe('GET /api/golf/rounds', () => {
   it('returns an empty array when no rounds exist', async () => {
@@ -103,5 +76,58 @@ describe('DELETE /api/golf/rounds/:id', () => {
 
   it('returns 404 for a non-existent round', async () => {
     assert.equal((await del('/api/golf/rounds/99999')).status, 404)
+  })
+})
+
+describe('GET /api/golf/range-days', () => {
+  it('returns an empty array initially', async () => {
+    const res = await get('/api/golf/range-days')
+    assert.equal(res.status, 200)
+    assert.deepEqual(await res.json(), [])
+  })
+})
+
+describe('POST /api/golf/range-days', () => {
+  it('marks a range day and returns it', async () => {
+    const res = await post('/api/golf/range-days', { date: '2026-04-10' })
+    assert.equal(res.status, 201)
+    const body = await res.json() as Record<string, unknown>
+    assert.equal(body.date, '2026-04-10')
+  })
+
+  it('returns 400 when date is missing', async () => {
+    assert.equal((await post('/api/golf/range-days', {})).status, 400)
+  })
+
+  it('returns 400 when date format is invalid', async () => {
+    assert.equal((await post('/api/golf/range-days', { date: 'not-a-date' })).status, 400)
+  })
+
+  it('is idempotent — marking the same day twice does not error', async () => {
+    await post('/api/golf/range-days', { date: '2026-04-11' })
+    assert.equal((await post('/api/golf/range-days', { date: '2026-04-11' })).status, 201)
+  })
+})
+
+describe('DELETE /api/golf/range-days/:date', () => {
+  it('unmarks a previously marked day', async () => {
+    await post('/api/golf/range-days', { date: '2026-04-12' })
+    assert.equal((await del('/api/golf/range-days/2026-04-12')).status, 204)
+  })
+
+  it('returns 404 for a date that was never marked', async () => {
+    assert.equal((await del('/api/golf/range-days/2030-12-31')).status, 404)
+  })
+})
+
+describe('GET /api/golf/range-days after mutations', () => {
+  it('returns marked dates sorted ascending', async () => {
+    const body = await (await get('/api/golf/range-days')).json() as string[]
+    assert.ok(body.includes('2026-04-10'))
+    assert.ok(body.includes('2026-04-11'))
+    assert.ok(!body.includes('2026-04-12'))
+    for (let i = 1; i < body.length; i++) {
+      assert.ok(body[i] >= body[i - 1])
+    }
   })
 })

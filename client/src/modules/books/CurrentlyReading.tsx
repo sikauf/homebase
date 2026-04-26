@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FALLBACK_RGBS, toHardcoverSlug, fetchJSON } from './shared'
 
 interface Book {
   title: string
@@ -7,25 +8,6 @@ interface Book {
   progress_pages: number | null
   cover_url: string | null
   accent_rgb: string | null
-}
-
-// Fallback palette if server couldn't extract a color
-const FALLBACK_RGBS = ['251,191,36', '45,212,191', '167,139,250', '251,146,60']
-
-function toHardcoverSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/['']/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
-async function fetchJSON<T>(url: string): Promise<T> {
-  const r = await fetch(url)
-  const text = await r.text()
-  const json = JSON.parse(text)
-  if (!r.ok) throw new Error(json.error ?? `Server error ${r.status}`)
-  return json as T
 }
 
 function SkeletonCard() {
