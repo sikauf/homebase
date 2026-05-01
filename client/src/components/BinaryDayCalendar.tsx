@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -11,55 +11,97 @@ function todayIso(): string {
   return toIso(d.getFullYear(), d.getMonth(), d.getDate())
 }
 
+type DayState = 'primary' | 'secondary'
+
+interface SecondaryConfig {
+  accentRgb: string
+  apiState: string
+}
+
 interface Props {
   title: string
   endpoint: string
   accentRgb: string
   countLabel: (n: number) => string
+  /** Optional second state. When set, clicks cycle: empty → primary → secondary → empty. */
+  secondary?: SecondaryConfig
+  /** API state name for the primary mark. Defaults to undefined (legacy: response is string[]). */
+  primaryApiState?: string
 }
 
-export default function BinaryDayCalendar({ title, endpoint, accentRgb, countLabel }: Props) {
+export default function BinaryDayCalendar({ title, endpoint, accentRgb, countLabel, secondary, primaryApiState }: Props) {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
-  const [days, setDays] = useState<Set<string>>(new Set())
+  const [days, setDays] = useState<Map<string, DayState>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const requestChain = useRef<Map<string, Promise<unknown>>>(new Map())
+
+  const stateful = secondary !== undefined
 
   useEffect(() => {
     fetch(endpoint)
       .then((r) => r.json())
-      .then((dates: string[]) => { setDays(new Set(dates)); setError(null) })
+      .then((data: string[] | { date: string; state: string }[]) => {
+        const next = new Map<string, DayState>()
+        for (const item of data) {
+          if (typeof item === 'string') {
+            next.set(item, 'primary')
+          } else {
+            next.set(item.date, item.state === secondary?.apiState ? 'secondary' : 'primary')
+          }
+        }
+        setDays(next)
+        setError(null)
+      })
       .catch(() => setError('Failed to load data'))
       .finally(() => setLoading(false))
-  }, [endpoint])
+  }, [endpoint, secondary?.apiState])
 
-  async function toggleDay(iso: string) {
-    const isMarked = days.has(iso)
+  function cycleDay(iso: string) {
+    const current = days.get(iso)
+    const nextState: DayState | null = stateful
+      ? current === undefined ? 'primary' : current === 'primary' ? 'secondary' : null
+      : current === undefined ? 'primary' : null
+
     setDays((prev) => {
-      const next = new Set(prev)
-      isMarked ? next.delete(iso) : next.add(iso)
+      const next = new Map(prev)
+      if (nextState === null) next.delete(iso)
+      else next.set(iso, nextState)
       return next
     })
-    try {
-      if (isMarked) {
-        const r = await fetch(`${endpoint}/${iso}`, { method: 'DELETE' })
-        if (!r.ok) throw new Error()
-      } else {
-        const r = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date: iso }),
-        })
-        if (!r.ok) throw new Error()
+
+    const prevTask = requestChain.current.get(iso) ?? Promise.resolve()
+    const task: Promise<unknown> = prevTask.catch(() => {}).then(async () => {
+      try {
+        if (nextState === null) {
+          const r = await fetch(`${endpoint}/${iso}`, { method: 'DELETE' })
+          if (!r.ok) throw new Error()
+        } else {
+          const apiState = nextState === 'secondary' ? secondary!.apiState : primaryApiState
+          const body: Record<string, string> = { date: iso }
+          if (apiState) body.state = apiState
+          const r = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+          if (!r.ok) throw new Error()
+        }
+      } catch {
+        if (requestChain.current.get(iso) === task) {
+          setDays((prev) => {
+            const next = new Map(prev)
+            if (current === undefined) next.delete(iso)
+            else next.set(iso, current)
+            return next
+          })
+        }
+        throw new Error()
       }
-    } catch {
-      setDays((prev) => {
-        const next = new Set(prev)
-        isMarked ? next.add(iso) : next.delete(iso)
-        return next
-      })
-    }
+    })
+    requestChain.current.set(iso, task)
   }
 
   function prevMonth() {
@@ -87,7 +129,7 @@ export default function BinaryDayCalendar({ title, endpoint, accentRgb, countLab
   while (cells.length % 7 !== 0) cells.push(null)
 
   const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`
-  const countThisMonth = [...days].filter((d) => d.startsWith(monthPrefix)).length
+  const countThisMonth = [...days.keys()].filter((d) => d.startsWith(monthPrefix)).length
 
   return (
     <div className="flex-1 flex p-5 min-h-0 overflow-y-auto" style={{ background: '#0c0c0c' }}>
@@ -173,23 +215,25 @@ export default function BinaryDayCalendar({ title, endpoint, accentRgb, countLab
               : cells.map((day, i) => {
                   if (day === null) return <div key={i} />
                   const iso = toIso(year, month, day)
-                  const isMarked = days.has(iso)
+                  const dayState = days.get(iso)
+                  const isMarked = dayState !== undefined
+                  const markRgb = dayState === 'secondary' ? secondary!.accentRgb : accentRgb
                   const isToday = iso === todayStr
                   const isFuture = iso > todayStr
                   return (
                     <button
                       key={iso}
-                      onClick={() => { if (!isFuture) toggleDay(iso) }}
+                      onClick={() => { if (!isFuture) cycleDay(iso) }}
                       disabled={isFuture}
                       className="aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition-all"
                       style={{
                         background: isMarked
-                          ? `rgba(${accentRgb},0.2)`
+                          ? `rgba(${markRgb},0.2)`
                           : isToday
                           ? 'rgba(255,255,255,0.06)'
                           : 'transparent',
                         color: isMarked
-                          ? `rgb(${accentRgb})`
+                          ? `rgb(${markRgb})`
                           : isToday
                           ? 'rgba(255,255,255,0.9)'
                           : isFuture
@@ -197,7 +241,7 @@ export default function BinaryDayCalendar({ title, endpoint, accentRgb, countLab
                           : 'rgba(255,255,255,0.55)',
                         border: isToday ? '1px solid rgba(255,255,255,0.15)' : '1px solid transparent',
                         cursor: isFuture ? 'default' : 'pointer',
-                        boxShadow: isMarked ? `0 0 12px rgba(${accentRgb},0.15)` : 'none',
+                        boxShadow: isMarked ? `0 0 12px rgba(${markRgb},0.15)` : 'none',
                       }}
                     >
                       {day}

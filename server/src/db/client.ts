@@ -33,7 +33,8 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS clean_days (
-    date TEXT PRIMARY KEY
+    date  TEXT PRIMARY KEY,
+    state TEXT NOT NULL DEFAULT 'clean'
   );
 
   CREATE TABLE IF NOT EXISTS golf_range_days (
@@ -58,5 +59,10 @@ db.exec(`
     PRIMARY KEY (weapon_id, boss_id)
   );
 `)
+
+const cleanDaysCols = db.prepare("PRAGMA table_info(clean_days)").all() as { name: string }[]
+if (!cleanDaysCols.some((c) => c.name === 'state')) {
+  db.exec("ALTER TABLE clean_days ADD COLUMN state TEXT NOT NULL DEFAULT 'clean'")
+}
 
 export default db

@@ -14,7 +14,7 @@ describe('GET /api/clean/days', () => {
 })
 
 describe('POST /api/clean/days', () => {
-  it('marks a day and returns it', async () => {
+  it('marks a day with default state "clean"', async () => {
     const res = await fetch(`${baseUrl()}/api/clean/days`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -23,6 +23,32 @@ describe('POST /api/clean/days', () => {
     assert.equal(res.status, 201)
     const body = await res.json() as Record<string, unknown>
     assert.equal(body.date, '2026-01-15')
+    assert.equal(body.state, 'clean')
+  })
+
+  it('marks a day with state "gold"', async () => {
+    const res = await fetch(`${baseUrl()}/api/clean/days`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: '2026-01-16', state: 'gold' }),
+    })
+    assert.equal(res.status, 201)
+    const body = await res.json() as Record<string, unknown>
+    assert.equal(body.state, 'gold')
+  })
+
+  it('upserts state when called twice on the same date', async () => {
+    const opts = (state: string) => ({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: '2026-01-17', state }),
+    })
+    await fetch(`${baseUrl()}/api/clean/days`, opts('clean'))
+    await fetch(`${baseUrl()}/api/clean/days`, opts('gold'))
+    const res = await fetch(`${baseUrl()}/api/clean/days`)
+    const body = await res.json() as { date: string; state: string }[]
+    const row = body.find((r) => r.date === '2026-01-17')
+    assert.equal(row?.state, 'gold')
   })
 
   it('returns 400 when date is missing', async () => {
@@ -43,15 +69,13 @@ describe('POST /api/clean/days', () => {
     assert.equal(res.status, 400)
   })
 
-  it('is idempotent — marking the same day twice does not error', async () => {
-    const opts = {
+  it('returns 400 when state is invalid', async () => {
+    const res = await fetch(`${baseUrl()}/api/clean/days`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: '2026-02-01' }),
-    }
-    await fetch(`${baseUrl()}/api/clean/days`, opts)
-    const res = await fetch(`${baseUrl()}/api/clean/days`, opts)
-    assert.equal(res.status, 201)
+      body: JSON.stringify({ date: '2026-02-01', state: 'platinum' }),
+    })
+    assert.equal(res.status, 400)
   })
 })
 
@@ -73,17 +97,20 @@ describe('DELETE /api/clean/days/:date', () => {
 })
 
 describe('GET /api/clean/days after mutations', () => {
-  it('returns all marked dates sorted ascending', async () => {
+  it('returns all marked dates with their states, sorted ascending', async () => {
     const res = await fetch(`${baseUrl()}/api/clean/days`)
     assert.equal(res.status, 200)
-    const body = await res.json() as string[]
-    // Dates inserted in earlier tests: 2026-01-15, 2026-02-01 (2026-03-10 was deleted)
-    assert.ok(body.includes('2026-01-15'))
-    assert.ok(body.includes('2026-02-01'))
-    assert.ok(!body.includes('2026-03-10'))
-    // Verify sorted
-    for (let i = 1; i < body.length; i++) {
-      assert.ok(body[i] >= body[i - 1])
+    const body = await res.json() as { date: string; state: string }[]
+    const dates = body.map((r) => r.date)
+    assert.ok(dates.includes('2026-01-15'))
+    assert.ok(dates.includes('2026-01-16'))
+    assert.ok(dates.includes('2026-01-17'))
+    assert.ok(!dates.includes('2026-03-10'))
+    for (let i = 1; i < dates.length; i++) {
+      assert.ok(dates[i] >= dates[i - 1])
+    }
+    for (const row of body) {
+      assert.ok(row.state === 'clean' || row.state === 'gold')
     }
   })
 })
