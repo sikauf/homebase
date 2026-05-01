@@ -1,7 +1,7 @@
 const COURSES = [
-  { name: 'South Creek',   image: '/golf/courses/south_creek.webp', objPos: '50% 50%' },
-  { name: 'Glen Dornoch',  image: '/golf/courses/glen_donorch.jpg', objPos: '50% 40%' },
-  { name: "Man O' War",    image: '/golf/courses/man_o_war.webp',   objPos: '50% 50%' },
+  { name: 'South Creek',   image: '/golf/myrtle/south_creek.webp', objPos: '50% 50%' },
+  { name: 'Glen Dornoch',  image: '/golf/myrtle/glen_donorch.jpg', objPos: '50% 40%' },
+  { name: "Man O' War",    image: '/golf/myrtle/man_o_war.webp',   objPos: '50% 50%' },
 ]
 
 export default function MyrtieTripSection() {

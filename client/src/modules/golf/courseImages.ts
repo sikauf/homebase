@@ -14,18 +14,18 @@ export interface CourseImage {
 const COURSES: CourseImage[] = [
   {
     name: 'South Creek',
-    image: '/golf/courses/south_creek.webp',
+    image: '/golf/myrtle/south_creek.webp',
     aliases: ['South Creek Golf Club'],
   },
   {
     name: 'Glen Dornoch',
-    image: '/golf/courses/glen_donorch.jpg',
+    image: '/golf/myrtle/glen_donorch.jpg',
     objectPosition: '50% 40%',
     aliases: ['Glen Dornoch Waterway Golf Links'],
   },
   {
     name: "Man O' War",
-    image: '/golf/courses/man_o_war.webp',
+    image: '/golf/courses/man_o_war.jpg',
     aliases: ['Man O War', 'Man Of War'],
   },
   {
