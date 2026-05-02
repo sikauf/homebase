@@ -8,7 +8,7 @@ export interface FieldDef {
   default?: unknown
   validate?: (v: unknown) => boolean
   trim?: boolean
-  error: string
+  error?: string
 }
 
 export function dateField(error = 'date is required and must be YYYY-MM-DD'): FieldDef {
@@ -122,14 +122,14 @@ export function defineCrud(opts: CrudOptions): Router {
           if (def.default !== undefined) {
             v = def.default
           } else if (def.required) {
-            res.status(400).json({ error: def.error })
+            res.status(400).json({ error: def.error ?? `${name} is invalid` })
             return
           } else {
             v = null
           }
         }
         if (v !== null && def.validate && !def.validate(v)) {
-          res.status(400).json({ error: def.error })
+          res.status(400).json({ error: def.error ?? `${name} is invalid` })
           return
         }
         values.push(v as ParamValue)

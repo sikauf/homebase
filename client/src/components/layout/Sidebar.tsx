@@ -2,6 +2,7 @@ import { NavLink, Link } from 'react-router-dom'
 import { useCleanVisible } from '../../hooks/useCleanVisible'
 import { sections } from '../../modules/registry'
 import type { SectionManifest } from '../../modules/manifest'
+import { useQuickAdd } from '../../modules/backlog/QuickAddContext'
 
 function NavEntry({ section }: { section: SectionManifest }) {
   const visible = section.useVisible ? section.useVisible() : true
@@ -26,6 +27,7 @@ function NavEntry({ section }: { section: SectionManifest }) {
 
 export default function Sidebar() {
   const [cleanVisible, setCleanVisible] = useCleanVisible()
+  const { open } = useQuickAdd()
 
   return (
     <aside className="w-56 min-h-screen bg-gray-900 flex flex-col">
@@ -33,6 +35,20 @@ export default function Sidebar() {
         <Link to="/" className="text-white font-bold text-lg tracking-tight hover:text-gray-300 transition-colors">
           Home Base
         </Link>
+      </div>
+      <div className="px-3 pt-3">
+        <button
+          type="button"
+          onClick={open}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-base leading-none">+</span>
+            <span>New backlog item</span>
+          </span>
+          <kbd className="px-1.5 py-0.5 rounded text-[10px] text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>n</kbd>
+        </button>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {sections.map((s) => <NavEntry key={s.path} section={s} />)}
