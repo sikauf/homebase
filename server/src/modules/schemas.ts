@@ -1,0 +1,15 @@
+import { migrations as golf } from './golf/schema'
+import { migrations as clean } from './clean/schema'
+import { migrations as fitness } from './fitness/schema'
+import { migrations as books } from './books/schema'
+import { migrations as exportSchema } from './export/schema'
+import { migrations as hades2 } from './games/hades2/schema'
+
+export const allMigrations = [
+  ...golf,
+  ...clean,
+  ...fitness,
+  ...books,
+  ...exportSchema,
+  ...hades2,
+]

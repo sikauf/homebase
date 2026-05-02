@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { Vibrant } from 'node-vibrant/node'
-import db from '../db/client'
+import db from '../../db/client'
 
 const SELECT_ACCENT = db.prepare('SELECT accent_rgb FROM book_accent_cache WHERE cover_url = ?')
 const UPSERT_ACCENT = db.prepare('INSERT OR REPLACE INTO book_accent_cache (cover_url, accent_rgb) VALUES (?, ?)')

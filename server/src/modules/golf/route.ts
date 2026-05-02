@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import db from '../db/client'
+import db from '../../db/client'
 
 const SELECT_ALL_ROUNDS = db.prepare('SELECT * FROM golf_rounds ORDER BY played_at DESC')
 const SELECT_STATS = db.prepare(

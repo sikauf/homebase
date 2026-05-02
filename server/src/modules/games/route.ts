@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import hades2Router from './hades2'
-import sts2Router from './sts2'
+import hades2Router from './hades2/route'
+import sts2Router from './sts2/route'
 
 const router = Router()
 

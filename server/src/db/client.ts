@@ -1,6 +1,8 @@
 import { DatabaseSync } from 'node:sqlite'
 import path from 'path'
 import fs from 'fs'
+import { runMigrations } from './migrations'
+import { allMigrations } from '../modules/schemas'
 
 const rawPath = process.env.DB_PATH ?? path.resolve(__dirname, '../../../data/homebase.db')
 const inMemory = rawPath === ':memory:'
@@ -18,57 +20,6 @@ if (!inMemory) {
   db.exec("PRAGMA journal_mode = WAL")
 }
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS golf_rounds (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    course      TEXT NOT NULL,
-    tees        TEXT,
-    score       INTEGER,
-    par         INTEGER DEFAULT 72,
-    fairways    INTEGER,
-    gir         INTEGER,
-    putts       INTEGER,
-    notes       TEXT,
-    played_at   TEXT DEFAULT (datetime('now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS clean_days (
-    date  TEXT PRIMARY KEY,
-    state TEXT NOT NULL DEFAULT 'clean'
-  );
-
-  CREATE TABLE IF NOT EXISTS golf_range_days (
-    date TEXT PRIMARY KEY
-  );
-
-  CREATE TABLE IF NOT EXISTS golf_tee_times (
-    id     INTEGER PRIMARY KEY AUTOINCREMENT,
-    course TEXT NOT NULL,
-    date   TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS fitness_workouts (
-    date TEXT NOT NULL,
-    type TEXT NOT NULL,
-    PRIMARY KEY (date, type)
-  );
-
-  CREATE TABLE IF NOT EXISTS book_accent_cache (
-    cover_url  TEXT PRIMARY KEY,
-    accent_rgb TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS hades2_testaments (
-    weapon_id    TEXT NOT NULL,
-    boss_id      TEXT NOT NULL,
-    completed_at TEXT NOT NULL DEFAULT (datetime('now')),
-    PRIMARY KEY (weapon_id, boss_id)
-  );
-`)
-
-const cleanDaysCols = db.prepare("PRAGMA table_info(clean_days)").all() as { name: string }[]
-if (!cleanDaysCols.some((c) => c.name === 'state')) {
-  db.exec("ALTER TABLE clean_days ADD COLUMN state TEXT NOT NULL DEFAULT 'clean'")
-}
+runMigrations(db, allMigrations)
 
 export default db

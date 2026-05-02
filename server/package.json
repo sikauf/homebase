@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "NODE_OPTIONS=--experimental-sqlite tsx watch --env-file=../.env src/index.ts",
     "build": "tsc",
-    "test": "NODE_OPTIONS=--experimental-sqlite DB_PATH=:memory: tsx --test 'src/tests/**/*.test.ts'"
+    "test": "NODE_OPTIONS=--experimental-sqlite DB_PATH=:memory: tsx --test 'src/modules/**/*.test.ts'"
   },
   "dependencies": {
     "cors": "^2.8.5",

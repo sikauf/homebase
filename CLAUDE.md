@@ -1,81 +1,81 @@
 # Home Base
 
-Personal dashboard app. React + Vite client, Express + node:sqlite server.
+Personal dashboard. React + Vite client, Express + node:sqlite server.
 
 ## Git
-Do NOT commit or push to the repository unless the user explicitly asks you to.
+Don't commit or push unless explicitly asked.
 
 ## After every change
-
-1. **Determine if new tests are needed.** Ask: does this change add a new API endpoint, alter existing endpoint behavior, or introduce new server-side logic? If yes, add tests for it in `server/src/tests/`.
-2. **Remove tests that are no longer needed.** If a change removes a feature or makes an existing test irrelevant, delete that test.
-3. **Run the full suite.** All tests must pass before the task is done:
-
-```
-npm test
-```
-
-If any tests fail, fix them before finishing. Update the test count in this file when tests are added.
+1. If the change adds or alters an API endpoint or server-side logic, add tests in the section's `route.test.ts`.
+2. Delete tests the change makes obsolete.
+3. Run `npm test` from the repo root. All tests must pass before finishing.
 
 ## Dev server
+`npm run dev` — client at http://localhost:5173, server at http://localhost:3001.
 
-```
-npm run dev
-```
-
-- Client: http://localhost:5173
-- Server: http://localhost:3001
-
-## Project structure
+## Layout
 
 - `client/` — React + TypeScript + Vite + Tailwind
 - `server/` — Express + TypeScript + node:sqlite (built-in, no native deps)
-- `server/src/tests/` — test suite using node:test + tsx
 - `data/homebase.db` — SQLite database (created on first run)
 
-## Key env vars (root `.env`)
+Each top-level section is a self-contained module.
 
-- `DB_PATH` — path to SQLite file (defaults to `data/homebase.db`; set to `:memory:` during tests)
-- `STS2_SAVE_PATH` — path to Slay the Spire 2 `progress.save` file
+**Client** (`client/src/modules/<section>/`):
+- `manifest.ts` exports a `SectionManifest`: `path`, `label`, `icon`, `order`, optional `description` (home grid card), optional `useVisible` hook (Sidebar/HomePage visibility), and either `tabs[]` (auto-renders `TabbedSection`) or `Section` (custom layout). Optional `routesClassName` adds an inner wrapper class for tabbed sections.
+- For tabbed sections, prefer the games-style nested layout: `<tab>/{Page.tsx, api.ts, data.ts}`. Older flat layouts (`<Tab>.tsx`) work but should be migrated when touching a section.
+- `client/src/modules/registry.ts` auto-discovers manifests via `import.meta.glob`. Sidebar, App routes, and HomePage all read from it — never edit those to add a section.
 
-## UI color style
+**Server** (`server/src/modules/<section>/`):
+- `route.ts` — express router. Use `defineCrud` from `shared/crud.ts` for the standard list / create / delete shape; the returned `Router` is mutable, so layer `.get/.post/.patch` on top for custom endpoints.
+- `schema.ts` — exports `migrations: Migration[]`. Use `CREATE TABLE IF NOT EXISTS` for new tables; append entries for any later schema change. The runner tracks applied IDs in the `_migrations` table.
+- `index.ts` — exports a `ServerModule` (`{ name, path, router }`).
+- `route.test.ts` — colocated, uses `setupTestServer` from `shared/test-helpers.ts`.
 
-All pages use a dark color scheme by default:
-- **Page background:** `#0c0c0c` (near-black)
-- **Cards / accent surfaces:** `#1a1a1a` with `border: 1px solid rgba(255,255,255,0.06)`
-- **Muted text:** `rgba(255,255,255,0.35)` for secondary labels, `rgba(255,255,255,0.25)` for tertiary
-- **Primary text:** `rgba(255,255,255,0.92)` or `text-white`
+Sub-tabs of a section (e.g. `games/hades2/`, `games/sts2/`) follow the same shape, mounted by the section's `route.ts`.
 
-Apply `dark` prop to `PageWrapper` for any new page. Never default to light (`bg-gray-50`) backgrounds for new modules.
+## Adding a new section
 
-## Managing static assets
+Client side:
+1. Create `client/src/modules/<name>/manifest.ts` and the page components. Registry picks it up automatically.
 
-Image and other static assets always live inside the repo at `client/public/<module>/<subfolder>/` (e.g. `client/public/games/sts2/`, `client/public/golf/myrtle/`). They are served directly by Vite's static file server and referenced in code as absolute paths (e.g. `/golf/myrtle/photo.jpg`). When a user provides an asset folder from outside the repo, copy it into the appropriate `client/public/` subdirectory and delete (or ask to delete) the original. Never reference files outside the repo.
+Server side:
+1. Create `server/src/modules/<name>/{route.ts, schema.ts, index.ts, route.test.ts}`.
+2. Add 1 import + 1 entry to `server/src/modules/registry.ts` (router).
+3. Add 1 import + 1 spread to `server/src/modules/schemas.ts` (migrations).
+
+Adding a tab to an existing section: 1 entry in that section's `manifest.ts` + the new Page (and route/schema if it has its own backend tables).
+
+## Env vars (root `.env`)
+- `DB_PATH` — SQLite file path (default `data/homebase.db`; tests use `:memory:`)
+- `STS2_SAVE_PATH` — path to Slay the Spire 2 `progress.save`
+
+## UI
+
+Dark theme by default:
+- Page background: `#0c0c0c`
+- Cards / surfaces: `#1a1a1a` with `border: 1px solid rgba(255,255,255,0.06)`
+- Primary text: `rgba(255,255,255,0.92)` or `text-white`
+- Muted text: `rgba(255,255,255,0.35)` (secondary), `rgba(255,255,255,0.25)` (tertiary)
+
+Apply `dark` to `PageWrapper` for new pages. Never default to light backgrounds.
+
+## Static assets
+
+Live under `client/public/<module>/<subfolder>/` (e.g. `client/public/golf/myrtle/`), served directly by Vite at absolute paths (e.g. `/golf/myrtle/photo.jpg`). When the user provides assets from outside the repo, copy them in and delete (or ask to delete) the original. Never reference files outside the repo.
 
 ## Golf course pictures
 
-Course images for the Golf module live in `client/public/golf/courses/` and are registered in `client/src/modules/golf/courseImages.ts`. Each registry entry maps a canonical course `name` (plus optional `aliases`) to an image path. The registry powers both the image banner on `RoundCard` and the autocomplete dropdown in `AddRoundModal`.
+Course images live in `client/public/golf/courses/`, registered in `client/src/modules/golf/courseImages.ts`. The registry powers both `RoundCard`'s banner and `AddRoundModal`'s autocomplete.
 
-**Trigger phrase — "golf course cleanup" (also accepts "golf picture cleanup"):** the user drops new image files directly in the repo root (e.g. `homebase/bergen_point.jpeg`). When the user says the trigger phrase:
+**Trigger phrase — "golf course cleanup" (also "golf picture cleanup"):** the user drops new image files in the repo root (e.g. `bergen_point.jpeg`).
 
-1. Find all loose image files (`.jpg`, `.jpeg`, `.png`, `.webp`) in the repo root.
-2. For each loose file, check if it is a **duplicate** of an existing registered course. A loose image is a duplicate if the course name inferred from its filename matches an existing registry entry's `name` or any of its `aliases` (case-insensitive, punctuation-ignored). If so:
-   - Delete the old image file from `client/public/golf/courses/`.
-   - Move the new file in (replacing the old).
-   - Update the registry entry's `image` path if the extension or filename changed.
-   - Do NOT create a new registry entry — the old one is being refreshed in place.
-3. For each non-duplicate, move the file into `client/public/golf/courses/` and add a new entry to `courseImages.ts`. Normalize the filename when moving: lowercase, snake_case, no spaces or punctuation other than underscores and a single extension (e.g. `Lido Beach.JPG` → `lido_beach.jpg`). The registry entry should use:
-   - `name`: canonical course name inferred from the filename (e.g. `bergen_point.jpeg` → "Bergen Point"). If ambiguous, ask before adding.
-   - `image`: the `/golf/courses/<filename>` path.
-   - `aliases`: any obvious variants (e.g. "<Name> Golf Course", "<Name> Country Club", abbreviations).
-   - Leave `objectPosition` unset unless the image clearly needs adjustment.
-4. This registration is what puts the course into the `AddRoundModal` autocomplete — do not skip it.
-5. Report back with the list of courses added and any duplicates replaced so the user can sanity-check.
-
-## Adding a new module
-
-1. Add server routes in `server/src/routes/<name>.ts`
-2. Register them in `server/src/app.ts`
-3. Add tests in `server/src/tests/<name>.test.ts`
-4. Add client types/api/hooks/page under `client/src/modules/<name>/`
-5. Add route in `client/src/App.tsx` and nav item in `client/src/components/layout/Sidebar.tsx`
+1. Find loose image files (`.jpg`, `.jpeg`, `.png`, `.webp`) in the repo root.
+2. For each, check if it duplicates an existing course (case-insensitive, punctuation-ignored match against `name` or `aliases`):
+   - **Duplicate:** delete the old file in `client/public/golf/courses/`, move the new one in, update the registry entry's `image` path if the filename changed. Don't add a new entry.
+   - **New:** move into `client/public/golf/courses/` with normalized filename (lowercase snake_case, single extension — e.g. `Lido Beach.JPG` → `lido_beach.jpg`). Add a registry entry:
+     - `name`: canonical course name from filename (ask if ambiguous)
+     - `image`: `/golf/courses/<filename>`
+     - `aliases`: obvious variants (e.g. "<Name> Golf Course", abbreviations)
+     - leave `objectPosition` unset unless the image clearly needs it
+3. Report added courses and replaced duplicates so the user can sanity-check.

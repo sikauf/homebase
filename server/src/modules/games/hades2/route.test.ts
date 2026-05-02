@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { setupTestServer } from '../helpers'
+import { setupTestServer } from '../../../shared/test-helpers'
 
 const baseUrl = setupTestServer()
 

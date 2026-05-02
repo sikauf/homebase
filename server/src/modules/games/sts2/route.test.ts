@@ -4,7 +4,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { createApp } from '../../app'
+import { createApp } from '../../../app'
 
 const MOCK_SAVE = {
   character_stats: [
