@@ -31,3 +31,14 @@ export interface CreateRoundPayload {
   notes?: string
   played_at?: string
 }
+
+export interface TeeTime {
+  id: number
+  course: string
+  date: string
+}
+
+export interface CreateTeeTimePayload {
+  course: string
+  date: string
+}

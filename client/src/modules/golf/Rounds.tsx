@@ -2,8 +2,11 @@ import { useState } from 'react'
 import PageWrapper from '../../components/layout/PageWrapper'
 import RoundCard from './RoundCard'
 import AddRoundModal from './AddRoundModal'
+import AddTeeTimeModal from './AddTeeTimeModal'
 import MyrtieTripSection from './MyrtieTripSection'
+import TeeTimesSection from './TeeTimesSection'
 import { useGolf } from '../../hooks/useGolf'
+import { useTeeTimes } from '../../hooks/useTeeTimes'
 
 function StatPill({ label, value }: { label: string; value: string | number | null }) {
   return (
@@ -16,7 +19,9 @@ function StatPill({ label, value }: { label: string; value: string | number | nu
 
 export default function Rounds() {
   const { rounds, stats, loading, error, addRound, removeRound } = useGolf()
+  const { teeTimes, addTeeTime } = useTeeTimes()
   const [showModal, setShowModal] = useState(false)
+  const [showTeeTimeModal, setShowTeeTimeModal] = useState(false)
 
   return (
     <>
@@ -51,6 +56,7 @@ export default function Rounds() {
 
         {!loading && !error && (
           <>
+            <TeeTimesSection teeTimes={teeTimes} onAdd={() => setShowTeeTimeModal(true)} />
             <MyrtieTripSection />
             {stats && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
@@ -81,6 +87,13 @@ export default function Rounds() {
         <AddRoundModal
           onClose={() => setShowModal(false)}
           onSubmit={addRound}
+        />
+      )}
+
+      {showTeeTimeModal && (
+        <AddTeeTimeModal
+          onClose={() => setShowTeeTimeModal(false)}
+          onSubmit={addTeeTime}
         />
       )}
     </>

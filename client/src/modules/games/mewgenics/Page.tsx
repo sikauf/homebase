@@ -1,21 +1,6 @@
 import { useState } from 'react'
-
-interface Collar { id: string; name: string; rgb: string }
-
-const COLLARS: Collar[] = [
-  { id: 'butcher',     name: 'Butcher',     rgb: '220,80,80'    },
-  { id: 'cleric',      name: 'Cleric',      rgb: '210,210,210'  },
-  { id: 'druid',       name: 'Druid',       rgb: '160,110,60'   },
-  { id: 'fighter',     name: 'Fighter',     rgb: '240,140,120'  },
-  { id: 'hunter',      name: 'Hunter',      rgb: '80,160,80'    },
-  { id: 'mage',        name: 'Mage',        rgb: '130,150,220'  },
-  { id: 'monk',        name: 'Monk',        rgb: '160,160,170'  },
-  { id: 'necromancer', name: 'Necromancer', rgb: '80,80,100'    },
-  { id: 'psychic',     name: 'Psychic',     rgb: '148,100,190'  },
-  { id: 'tank',        name: 'Tank',        rgb: '180,155,90'   },
-  { id: 'thief',       name: 'Thief',       rgb: '240,215,80'   },
-  { id: 'tinkerer',    name: 'Tinkerer',    rgb: '72,210,185'   },
-]
+import GamePageShell from '../_shared/GamePageShell'
+import { COLLARS, Collar } from './data'
 
 const SWAY_CSS = `
   @keyframes sway {
@@ -55,7 +40,6 @@ function CollarHanger({
       onMouseLeave={() => onHover(false)}
       onClick={onClick}
     >
-      {/* Hook mount on rack */}
       <div
         style={{
           width: '3px',
@@ -65,9 +49,7 @@ function CollarHanger({
         }}
       />
 
-      {/* Everything below rotates as one unit from the hook top */}
       <div className={`collar-hang flex flex-col items-center w-full ${hovered ? 'swaying' : ''}`}>
-        {/* Chain */}
         <div
           style={{
             width: '2px',
@@ -76,7 +58,6 @@ function CollarHanger({
           }}
         />
 
-        {/* Collar icon — fills column width */}
         <div
           className="w-full"
           style={{
@@ -99,7 +80,6 @@ function CollarHanger({
           />
         </div>
 
-        {/* Label */}
         <p
           className="mt-2 uppercase font-semibold"
           style={{
@@ -125,34 +105,10 @@ export default function Mewgenics() {
   }
 
   return (
-    <div className="flex-1 flex flex-col rounded-2xl overflow-hidden" style={{ background: '#0c0c0c' }}>
+    <GamePageShell title="Collar Progress">
       <style>{SWAY_CSS}</style>
 
-      {/* Header */}
-      <div className="px-7 pt-8 pb-7 shrink-0">
-        <div className="flex items-center gap-5">
-          <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }}/>
-          <div className="text-center">
-            <h2 className="text-2xl font-black tracking-[.35em] uppercase" style={{ color: 'rgba(255,255,255,0.92)', letterSpacing: '0.35em' }}>
-              Collar Progress
-            </h2>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }}/>
-              <div className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }}/>
-              <div className="h-px w-4" style={{ background: 'rgba(255,255,255,0.1)' }}/>
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.5)' }}/>
-              <div className="h-px w-4" style={{ background: 'rgba(255,255,255,0.1)' }}/>
-              <div className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }}/>
-              <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }}/>
-            </div>
-          </div>
-          <div className="h-px flex-1" style={{ background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.12))' }}/>
-        </div>
-      </div>
-
-      {/* Single rack */}
       <div className="flex-1 flex flex-col px-4 pb-8 min-h-0">
-        {/* Rack bar */}
         <div className="relative shrink-0" style={{ height: '16px' }}>
           <div className="absolute" style={{
             left: '-4px', top: '-5px', width: '12px', height: '26px',
@@ -172,7 +128,6 @@ export default function Mewgenics() {
           }}/>
         </div>
 
-        {/* All 12 collars */}
         <div className="flex flex-1">
           {COLLARS.map((collar) => (
             <CollarHanger
@@ -185,6 +140,6 @@ export default function Mewgenics() {
           ))}
         </div>
       </div>
-    </div>
+    </GamePageShell>
   )
 }

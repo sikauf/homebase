@@ -131,3 +131,73 @@ describe('GET /api/golf/range-days after mutations', () => {
     }
   })
 })
+
+describe('GET /api/golf/tee-times', () => {
+  it('returns an empty array when no tee times exist', async () => {
+    const res = await get('/api/golf/tee-times')
+    assert.equal(res.status, 200)
+    assert.deepEqual(await res.json(), [])
+  })
+})
+
+describe('POST /api/golf/tee-times', () => {
+  it('creates a tee time and returns it with an id', async () => {
+    const res = await post('/api/golf/tee-times', { course: 'Bergen Point', date: '2026-06-15' })
+    assert.equal(res.status, 201)
+    const body = await res.json() as { id: number; course: string; date: string }
+    assert.ok(body.id)
+    assert.equal(body.course, 'Bergen Point')
+    assert.equal(body.date, '2026-06-15')
+  })
+
+  it('trims whitespace from course', async () => {
+    const res = await post('/api/golf/tee-times', { course: '  Lido Beach  ', date: '2026-07-01' })
+    assert.equal(res.status, 201)
+    const body = await res.json() as { course: string }
+    assert.equal(body.course, 'Lido Beach')
+  })
+
+  it('returns 400 when course is missing', async () => {
+    const res = await post('/api/golf/tee-times', { date: '2026-06-15' })
+    assert.equal(res.status, 400)
+  })
+
+  it('returns 400 when course is empty', async () => {
+    const res = await post('/api/golf/tee-times', { course: '   ', date: '2026-06-15' })
+    assert.equal(res.status, 400)
+  })
+
+  it('returns 400 when date is missing', async () => {
+    const res = await post('/api/golf/tee-times', { course: 'Lido Beach' })
+    assert.equal(res.status, 400)
+  })
+
+  it('returns 400 when date format is invalid', async () => {
+    const res = await post('/api/golf/tee-times', { course: 'Lido Beach', date: '06/15/2026' })
+    assert.equal(res.status, 400)
+  })
+})
+
+describe('GET /api/golf/tee-times after mutations', () => {
+  it('returns tee times sorted by date ascending', async () => {
+    await post('/api/golf/tee-times', { course: 'A', date: '2026-08-01' })
+    await post('/api/golf/tee-times', { course: 'B', date: '2026-05-01' })
+    const body = await (await get('/api/golf/tee-times')).json() as { date: string }[]
+    for (let i = 1; i < body.length; i++) {
+      assert.ok(body[i].date >= body[i - 1].date)
+    }
+  })
+})
+
+describe('DELETE /api/golf/tee-times/:id', () => {
+  it('deletes an existing tee time', async () => {
+    const created = await (await post('/api/golf/tee-times', { course: 'Crab Meadow', date: '2026-09-01' })).json() as { id: number }
+    const res = await del(`/api/golf/tee-times/${created.id}`)
+    assert.equal(res.status, 204)
+  })
+
+  it('returns 404 for a non-existent id', async () => {
+    const res = await del('/api/golf/tee-times/999999')
+    assert.equal(res.status, 404)
+  })
+})

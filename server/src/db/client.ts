@@ -41,6 +41,12 @@ db.exec(`
     date TEXT PRIMARY KEY
   );
 
+  CREATE TABLE IF NOT EXISTS golf_tee_times (
+    id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    course TEXT NOT NULL,
+    date   TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS fitness_workouts (
     date TEXT NOT NULL,
     type TEXT NOT NULL,

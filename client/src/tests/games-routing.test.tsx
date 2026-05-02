@@ -4,7 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import GamesPage from '../modules/games/GamesPage'
 
 // Stub out SlayTheSpire2 so tests don't need a running API
-vi.mock('../modules/games/SlayTheSpire2', () => ({
+vi.mock('../modules/games/sts2/Page', () => ({
   default: () => <div data-testid="sts2-panel" />,
 }))
 

@@ -1,26 +1,7 @@
 import { useEffect, useState } from 'react'
-
-interface CharacterAscension {
-  id: string
-  name: string
-  max_ascension: number
-  preferred_ascension: number
-  total_wins: number
-  total_losses: number
-}
-
-const CONFIG: Record<string, {
-  image: string
-  objPos: string
-  color: string
-  rgb: string
-}> = {
-  'CHARACTER.IRONCLAD':    { image: '/games/sts2/ironclad.png',    objPos: '38% 0%',  color: '#f87171', rgb: '248,113,113' },
-  'CHARACTER.SILENT':      { image: '/games/sts2/silent.png',      objPos: '22% 0%',  color: '#4ade80', rgb: '74,222,128'  },
-  'CHARACTER.DEFECT':      { image: '/games/sts2/defect.png',      objPos: '68% 0%',  color: '#60a5fa', rgb: '96,165,250'  },
-  'CHARACTER.REGENT':      { image: '/games/sts2/regent.png',      objPos: '50% 0%',  color: '#fb923c', rgb: '251,146,60'  },
-  'CHARACTER.NECROBINDER': { image: '/games/sts2/necrobinder.png', objPos: '55% 0%',  color: '#c084fc', rgb: '192,132,252' },
-}
+import GamePageShell from '../_shared/GamePageShell'
+import { CONFIG } from './data'
+import { CharacterAscension, fetchAscensions } from './api'
 
 function SkeletonCard() {
   return (
@@ -42,62 +23,14 @@ export default function SlayTheSpire2() {
 
   useEffect(() => {
     setLoading(true)
-    fetch('/api/games/sts2/ascensions')
-      .then((r) => r.ok ? r.json() : r.json().then((e: { error: string }) => Promise.reject(e.error)))
+    fetchAscensions()
       .then((data) => { setCharacters(data); setError(null) })
-      .catch((e) => setError(String(e)))
+      .catch((e) => setError(String(e.message ?? e)))
       .finally(() => setLoading(false))
   }, [])
 
   return (
-    <div className="flex-1 flex flex-col rounded-2xl overflow-hidden" style={{ background: '#0c0c0c' }}>
-      {/* Header */}
-      <div className="px-7 pt-8 pb-7 shrink-0">
-        <div className="flex items-center gap-5">
-          {/* Left rule */}
-          <div
-            className="h-px flex-1"
-            style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }}
-          />
-
-          {/* Title */}
-          <div className="text-center">
-            <h2
-              className="text-2xl font-black tracking-[.35em] uppercase"
-              style={{ color: 'rgba(255,255,255,0.92)', letterSpacing: '0.35em' }}
-            >
-              Ascension Progress
-            </h2>
-            {/* Decorative underline */}
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }} />
-              <div
-                className="w-1 h-1 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.35)' }}
-              />
-              <div className="h-px w-4" style={{ background: 'rgba(255,255,255,0.1)' }} />
-              <div
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.5)' }}
-              />
-              <div className="h-px w-4" style={{ background: 'rgba(255,255,255,0.1)' }} />
-              <div
-                className="w-1 h-1 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.35)' }}
-              />
-              <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }} />
-            </div>
-          </div>
-
-          {/* Right rule */}
-          <div
-            className="h-px flex-1"
-            style={{ background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.12))' }}
-          />
-        </div>
-      </div>
-
-      {/* Portrait grid */}
+    <GamePageShell title="Ascension Progress">
       <div className="flex-1 px-5 pb-5 grid grid-cols-5 gap-3 min-h-0">
         {loading && Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
 
@@ -131,7 +64,6 @@ export default function SlayTheSpire2() {
               onMouseEnter={() => setHoveredId(c.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
-              {/* Art — flex-1 so it fills available space, head always visible at top */}
               <div className="flex-1 relative overflow-hidden min-h-0">
                 <img
                   src={cfg.image}
@@ -145,19 +77,16 @@ export default function SlayTheSpire2() {
                     transition: 'filter 0.3s ease, transform 0.3s ease',
                   }}
                 />
-                {/* Bottom fade into number panel */}
                 <div
                   className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
                   style={{ background: 'linear-gradient(to bottom, transparent, #111)' }}
                 />
               </div>
 
-              {/* Ascension number panel */}
               <div
                 className="shrink-0 relative flex items-center justify-center"
                 style={{ height: '5.5rem', background: '#111' }}
               >
-                {/* Colored tint on hover — separate layer avoids gradient transition flicker */}
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
@@ -181,6 +110,6 @@ export default function SlayTheSpire2() {
           )
         })}
       </div>
-    </div>
+    </GamePageShell>
   )
 }

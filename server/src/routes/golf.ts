@@ -23,6 +23,11 @@ const SELECT_ALL_RANGE_DAYS = db.prepare('SELECT date FROM golf_range_days ORDER
 const INSERT_RANGE_DAY = db.prepare('INSERT OR IGNORE INTO golf_range_days (date) VALUES (?)')
 const DELETE_RANGE_DAY = db.prepare('DELETE FROM golf_range_days WHERE date = ?')
 
+const SELECT_ALL_TEE_TIMES = db.prepare('SELECT id, course, date FROM golf_tee_times ORDER BY date ASC, id ASC')
+const SELECT_TEE_TIME = db.prepare('SELECT id, course, date FROM golf_tee_times WHERE id = ?')
+const INSERT_TEE_TIME = db.prepare('INSERT INTO golf_tee_times (course, date) VALUES (?, ?)')
+const DELETE_TEE_TIME = db.prepare('DELETE FROM golf_tee_times WHERE id = ?')
+
 const router = Router()
 
 router.get('/rounds', (_req: Request, res: Response) => {
@@ -111,6 +116,28 @@ router.delete('/range-days/:date', (req: Request, res: Response) => {
   const { date } = req.params
   const result = DELETE_RANGE_DAY.run(date)
   if (result.changes === 0) { res.status(404).json({ error: 'Date not found' }); return }
+  res.status(204).end()
+})
+
+router.get('/tee-times', (_req: Request, res: Response) => {
+  res.json(SELECT_ALL_TEE_TIMES.all())
+})
+
+router.post('/tee-times', (req: Request, res: Response) => {
+  const { course, date } = req.body as { course?: string; date?: string }
+  const trimmed = course?.trim()
+  if (!trimmed) { res.status(400).json({ error: 'course is required' }); return }
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    res.status(400).json({ error: 'date is required and must be YYYY-MM-DD' }); return
+  }
+  const result = INSERT_TEE_TIME.run(trimmed, date)
+  res.status(201).json(SELECT_TEE_TIME.get(result.lastInsertRowid))
+})
+
+router.delete('/tee-times/:id', (req: Request, res: Response) => {
+  const id = Number(req.params.id)
+  const result = DELETE_TEE_TIME.run(id)
+  if (result.changes === 0) { res.status(404).json({ error: 'Tee time not found' }); return }
   res.status(204).end()
 })
 

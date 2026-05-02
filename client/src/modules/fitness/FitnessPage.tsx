@@ -177,44 +177,9 @@ export default function FitnessPage() {
           </div>
         </div>
 
-        {/* Month type breakdown */}
-        {monthTypesSorted.length > 0 && (
-          <div
-            className="w-full max-w-lg mb-5 rounded-2xl px-5 py-4 flex flex-col gap-2.5"
-            style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <p className="text-[10px] tracking-widest uppercase mb-1" style={{ color: 'rgba(255,255,255,0.2)' }}>
-              {monthName}
-            </p>
-            {monthTypesSorted.map(([type, count]) => {
-              const max = monthTypesSorted[0][1]
-              const pct = (count / max) * 100
-              return (
-                <div key={type} className="flex items-center gap-3">
-                  <span
-                    className="text-xs capitalize font-medium w-16 shrink-0 text-right"
-                    style={{ color: 'rgba(255,255,255,0.45)' }}
-                  >
-                    {type}
-                  </span>
-                  <div className="flex-1 rounded-full overflow-hidden" style={{ height: '5px', background: 'rgba(255,255,255,0.06)' }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${pct}%`, background: TYPE_COLOR[type], opacity: 0.75 }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold w-5 shrink-0 text-right" style={{ color: TYPE_COLOR[type] }}>
-                    {count}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
         {/* Calendar */}
         <div
-          className="w-full max-w-lg rounded-2xl overflow-hidden"
+          className="w-full max-w-lg mb-5 rounded-2xl overflow-hidden"
           style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           {/* Month nav */}
@@ -307,6 +272,41 @@ export default function FitnessPage() {
                 })}
           </div>
         </div>
+
+        {/* Month type breakdown */}
+        {monthTypesSorted.length > 0 && (
+          <div
+            className="w-full max-w-lg rounded-2xl px-5 py-4 flex flex-col gap-2.5"
+            style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <p className="text-[10px] tracking-widest uppercase mb-1" style={{ color: 'rgba(255,255,255,0.2)' }}>
+              {monthName}
+            </p>
+            {monthTypesSorted.map(([type, count]) => {
+              const max = monthTypesSorted[0][1]
+              const pct = (count / max) * 100
+              return (
+                <div key={type} className="flex items-center gap-3">
+                  <span
+                    className="text-xs capitalize font-medium w-16 shrink-0 text-right"
+                    style={{ color: 'rgba(255,255,255,0.45)' }}
+                  >
+                    {type}
+                  </span>
+                  <div className="flex-1 rounded-full overflow-hidden" style={{ height: '5px', background: 'rgba(255,255,255,0.06)' }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${pct}%`, background: TYPE_COLOR[type], opacity: 0.75 }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold w-5 shrink-0 text-right" style={{ color: TYPE_COLOR[type] }}>
+                    {count}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* Spacer */}
         <div className="h-8" />

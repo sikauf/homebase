@@ -1,12 +1,8 @@
 import { useEffect, useState, CSSProperties } from 'react'
-import { WEAPONS, BOSSES, Weapon, TOTAL_BOSSES } from './hadesData'
-import HadesIIModal from './HadesIIModal'
-
-interface TestamentRow {
-  weapon_id: string
-  boss_id: string
-  completed_at: string
-}
+import GamePageShell from '../_shared/GamePageShell'
+import { WEAPONS, BOSSES, Weapon, TOTAL_BOSSES } from './data'
+import { fetchTestaments, markTestament } from './api'
+import HadesIIModal from './Modal'
 
 // Flat-top hexagon: 2 top, 2 sides, 2 bottom. Circumradius R as % of square container.
 const R = 34
@@ -76,9 +72,8 @@ export default function HadesII() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/games/hades2/testaments')
-      .then((r) => r.ok ? r.json() : Promise.reject(r.statusText))
-      .then((rows: TestamentRow[]) => {
+    fetchTestaments()
+      .then((rows) => {
         const map = new Map<string, Set<string>>()
         for (const row of rows) {
           if (!map.has(row.weapon_id)) map.set(row.weapon_id, new Set())
@@ -90,7 +85,6 @@ export default function HadesII() {
   }, [])
 
   function handleMark(weaponId: string, bossId: string) {
-    // Optimistic update
     setCompleted((prev) => {
       const next = new Map(prev)
       const set = new Set(next.get(weaponId) ?? [])
@@ -98,53 +92,23 @@ export default function HadesII() {
       next.set(weaponId, set)
       return next
     })
-    fetch('/api/games/hades2/testaments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ weapon_id: weaponId, boss_id: bossId }),
-    }).catch((e) => console.error('Failed to save testament:', e))
+    markTestament(weaponId, bossId).catch((e) => console.error('Failed to save testament:', e))
   }
 
   return (
-    <div className="flex-1 flex flex-col rounded-2xl overflow-hidden" style={{ background: '#0c0c0c' }}>
+    <GamePageShell title="Testaments">
       <style>{PULSE_CSS}</style>
 
-      {/* Header */}
-      <div className="px-7 pt-8 pb-7 shrink-0">
-        <div className="flex items-center gap-5">
-          <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }}/>
-          <div className="text-center">
-            <h2 className="text-2xl font-black tracking-[.35em] uppercase" style={{ color: 'rgba(255,255,255,0.92)', letterSpacing: '0.35em' }}>
-              Testaments
-            </h2>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }}/>
-              <div className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }}/>
-              <div className="h-px w-4" style={{ background: 'rgba(255,255,255,0.1)' }}/>
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.5)' }}/>
-              <div className="h-px w-4" style={{ background: 'rgba(255,255,255,0.1)' }}/>
-              <div className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }}/>
-              <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }}/>
-            </div>
-          </div>
-          <div className="h-px flex-1" style={{ background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.12))' }}/>
-        </div>
-      </div>
-
-      {/* Altar */}
       <div className="flex-1 flex items-center justify-center min-h-0 p-4 relative">
-        {/* Ambient background glow */}
         <div className="absolute inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse at center, rgba(120,90,200,0.10) 0%, rgba(40,20,80,0.05) 35%, transparent 70%)',
         }}/>
 
-        {/* Square hex container */}
         <div className="relative" style={{
           width: 'min(100%, 78vh)',
           aspectRatio: '1 / 1',
           maxWidth: '760px',
         }}>
-          {/* Connecting filaments */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="-50 -50 100 100" preserveAspectRatio="none">
             <polygon
               points={POSITIONS.map(p => `${p.x},${p.y}`).join(' ')}
@@ -158,7 +122,6 @@ export default function HadesII() {
             ))}
           </svg>
 
-          {/* Central orb */}
           <div className="absolute hades-orb-core" style={{
             top: '50%', left: '50%',
             width: '18%', aspectRatio: '1 / 1',
@@ -174,7 +137,6 @@ export default function HadesII() {
             borderRadius: '50%',
           }}/>
 
-          {/* Weapon pedestals */}
           {WEAPONS.map((w, i) => {
             const pos = POSITIONS[i]
             const labelAbove = pos.y < -1
@@ -194,10 +156,8 @@ export default function HadesII() {
                 } as CSSProperties}
                 onClick={() => setOpenWeapon(w)}
               >
-                {/* Pedestal aura */}
                 <div className="hades-aura absolute inset-0 rounded-full pointer-events-none"/>
 
-                {/* Pedestal disc (under-light) */}
                 <div className="hades-disc absolute pointer-events-none" style={{
                   bottom: '4%', left: '50%',
                   transform: 'translateX(-50%)',
@@ -206,7 +166,6 @@ export default function HadesII() {
                   filter: 'blur(3px)',
                 }}/>
 
-                {/* Weapon */}
                 <img
                   src={w.image}
                   alt={w.name}
@@ -219,7 +178,6 @@ export default function HadesII() {
                   }}
                 />
 
-                {/* Tick marks — 8 dots, filled left-to-right by completion count */}
                 <div
                   className="absolute pointer-events-none flex justify-center items-center"
                   style={{
@@ -251,7 +209,6 @@ export default function HadesII() {
                   })}
                 </div>
 
-                {/* Hover label */}
                 <div
                   className="hades-label absolute uppercase font-semibold whitespace-nowrap pointer-events-none"
                   style={{
@@ -279,6 +236,6 @@ export default function HadesII() {
           onClose={() => setOpenWeapon(null)}
         />
       )}
-    </div>
+    </GamePageShell>
   )
 }

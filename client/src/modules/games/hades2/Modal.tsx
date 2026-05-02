@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Weapon, BOSSES, SURFACE_ORDER, UNDERGROUND_ORDER, TOTAL_BOSSES } from './hadesData'
+import { Weapon, BOSSES, SURFACE_ORDER, UNDERGROUND_ORDER, TOTAL_BOSSES } from './data'
 
 interface Props {
   weapon: Weapon
@@ -83,7 +83,6 @@ function BossTile({ bossId, completed, onClick, size }: BossTileProps) {
             transition: 'filter 0.3s ease',
           }}
         />
-        {/* Bottom name strip */}
         <div
           className="absolute left-0 right-0 bottom-0 px-2 py-1.5 text-center uppercase font-semibold pointer-events-none"
           style={{
@@ -97,21 +96,18 @@ function BossTile({ bossId, completed, onClick, size }: BossTileProps) {
           {boss.name}
         </div>
 
-        {/* Red X for completed */}
         {completed && (
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
           >
-            {/* Static glow underlay — fades in once, no per-frame filter cost */}
             <g className="hades-x-glow" style={{ filter: 'blur(3px)' }}>
               <line x1="14" y1="14" x2="86" y2="86"
                 stroke="rgba(220,38,38,0.75)" strokeWidth="9" strokeLinecap="round"/>
               <line x1="86" y1="14" x2="14" y2="86"
                 stroke="rgba(220,38,38,0.75)" strokeWidth="9" strokeLinecap="round"/>
             </g>
-            {/* Animated solid X on top — no filter */}
             <line className="hades-x-line" x1="14" y1="14" x2="86" y2="86"
               stroke="#dc2626" strokeWidth="6" strokeLinecap="round"/>
             <line className="hades-x-line" x1="86" y1="14" x2="14" y2="86"
@@ -160,7 +156,6 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
           overflowY: 'auto',
         }}
       >
-        {/* Close */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
@@ -178,7 +173,6 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
           </svg>
         </button>
 
-        {/* Title */}
         <div className="text-center mb-1">
           <p className="uppercase font-semibold tracking-[0.4em]" style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>
             Testaments
@@ -194,9 +188,7 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
           </p>
         </div>
 
-        {/* Three columns */}
         <div className="grid grid-cols-3 gap-6 mt-8 items-center" style={{ minHeight: 560 }}>
-          {/* UNDERGROUND COLUMN */}
           <div
             className="relative flex flex-col items-center py-6 rounded-xl"
             style={{
@@ -207,7 +199,6 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
             <div className="uppercase font-bold mb-4" style={{ fontSize: '0.7rem', letterSpacing: '0.35em', color: 'rgba(170,150,240,0.75)' }}>
               ↓ Underground
             </div>
-            {/* Top-down: Hecate at top, Chronos at bottom */}
             {UNDERGROUND_ORDER.map((bossId, idx, arr) => (
               <div key={bossId} className="flex flex-col items-center">
                 <BossTile
@@ -223,9 +214,7 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
             ))}
           </div>
 
-          {/* CENTER WEAPON */}
           <div className="relative flex flex-col items-center justify-center px-2">
-            {/* Pedestal aura */}
             <div className="absolute pointer-events-none" style={{
               top: '50%', left: '50%',
               transform: 'translate(-50%, -50%)',
@@ -245,7 +234,6 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
                 filter: `drop-shadow(0 14px 32px rgba(${weapon.rgb},0.55)) drop-shadow(0 0 18px rgba(${weapon.rgb},0.35)) brightness(1.1)`,
               }}
             />
-            {/* Pedestal disc */}
             <div className="relative -mt-3" style={{
               width: '70%', height: '12px',
               borderRadius: '50%',
@@ -254,7 +242,6 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
             }}/>
           </div>
 
-          {/* SURFACE COLUMN */}
           <div
             className="relative flex flex-col items-center py-6 rounded-xl"
             style={{
@@ -265,7 +252,6 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
             <div className="uppercase font-bold mb-4" style={{ fontSize: '0.7rem', letterSpacing: '0.35em', color: 'rgba(255,210,140,0.75)' }}>
               ↓ Surface
             </div>
-            {/* Top-down: Polyphemus at top, Typhon at bottom */}
             {SURFACE_ORDER.map((bossId, idx, arr) => (
               <div key={bossId} className="flex flex-col items-center">
                 <BossTile

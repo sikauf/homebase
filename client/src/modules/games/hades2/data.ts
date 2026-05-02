@@ -1,9 +1,6 @@
-export interface Weapon {
-  id: string
-  name: string
-  image: string
-  rgb: string
-}
+import { GameItem } from '../_shared/types'
+
+export type Weapon = GameItem
 
 export interface Boss {
   id: string
