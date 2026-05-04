@@ -11,6 +11,7 @@ interface ContextValue {
   createItem: (input: { text: string; section: string | null; tab: string | null }) => Promise<void>
   toggleStatus: (item: BacklogItem) => Promise<void>
   deleteItem: (id: number) => Promise<void>
+  reorder: (ids: number[]) => Promise<void>
 }
 
 const QuickAddContext = createContext<ContextValue | null>(null)
@@ -49,6 +50,25 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     setItems((prev) => prev.filter((i) => i.id !== id))
   }, [])
 
+  const reorder = useCallback(async (ids: number[]) => {
+    setItems((prev) => {
+      const targetIds = new Set(ids)
+      const subset = prev.filter((i) => targetIds.has(i.id))
+      const sortedPositions = subset.map((i) => i.position).sort((a, b) => a - b)
+      const newPos = new Map<number, number>()
+      ids.forEach((id, i) => newPos.set(id, sortedPositions[i]))
+      return prev
+        .map((i) => (newPos.has(i.id) ? { ...i, position: newPos.get(i.id)! } : i))
+        .sort((a, b) => a.position - b.position || b.id - a.id)
+    })
+    try {
+      await api.reorderItems(ids)
+    } catch (e) {
+      console.error('Failed to reorder backlog items:', e)
+      api.fetchItems().then(setItems).catch(() => {})
+    }
+  }, [])
+
   const value: ContextValue = {
     isOpen,
     open: () => setIsOpen(true),
@@ -58,6 +78,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     createItem,
     toggleStatus,
     deleteItem,
+    reorder,
   }
 
   return <QuickAddContext.Provider value={value}>{children}</QuickAddContext.Provider>

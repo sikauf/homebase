@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { sections } from '../registry'
 import { useQuickAdd } from './QuickAddContext'
@@ -10,8 +10,6 @@ function parsePathname(pathname: string): { section: string; tab: string } {
   return { section: slug, tab: parts[1] ?? '' }
 }
 
-const SELECTABLE_SECTIONS = sections.filter((s) => s.path !== '/' && s.path !== '/backlog')
-
 export default function QuickAddModal() {
   const { isOpen, close, createItem } = useQuickAdd()
   const location = useLocation()
@@ -20,6 +18,10 @@ export default function QuickAddModal() {
   const [tab, setTab] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const selectableSections = useMemo(
+    () => sections.filter((s) => s.path !== '/' && s.path !== '/backlog'),
+    [],
+  )
 
   useEffect(() => {
     if (!isOpen) return
@@ -45,7 +47,7 @@ export default function QuickAddModal() {
 
   if (!isOpen) return null
 
-  const sectionManifest = SELECTABLE_SECTIONS.find((s) => s.path === `/${section}`)
+  const sectionManifest = selectableSections.find((s) => s.path === `/${section}`)
   const tabOptions = sectionManifest?.tabs ?? []
 
   async function submit() {
@@ -115,7 +117,7 @@ export default function QuickAddModal() {
             }}
           >
             <option value="">Untagged</option>
-            {SELECTABLE_SECTIONS.map((s) => (
+            {selectableSections.map((s) => (
               <option key={s.path} value={s.path.replace(/^\//, '')}>{s.label}</option>
             ))}
           </select>

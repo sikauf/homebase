@@ -6,4 +6,5 @@ export interface BacklogItem {
   status: 'open' | 'done'
   created_at: string
   completed_at: string | null
+  position: number
 }

@@ -6,5 +6,6 @@ export const manifest: SectionManifest = {
   label: 'Backlog',
   icon: '📋',
   order: 6,
+  description: 'Quick captures',
   Section: BacklogPage,
 }

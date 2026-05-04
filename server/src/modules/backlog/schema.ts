@@ -13,4 +13,11 @@ export const migrations: Migration[] = [
       completed_at TEXT
     )`,
   },
+  {
+    id: 'backlog_items_position',
+    up: `
+      ALTER TABLE backlog_items ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
+      UPDATE backlog_items SET position = -id;
+    `,
+  },
 ]

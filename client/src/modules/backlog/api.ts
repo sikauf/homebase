@@ -37,3 +37,12 @@ export async function deleteItem(id: number): Promise<void> {
   const res = await fetch(`/api/backlog/items/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(res.statusText)
 }
+
+export async function reorderItems(ids: number[]): Promise<void> {
+  const res = await fetch('/api/backlog/items/reorder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  })
+  if (!res.ok) throw new Error(res.statusText)
+}

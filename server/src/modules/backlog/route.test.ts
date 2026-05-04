@@ -12,6 +12,7 @@ interface Item {
   status: string
   created_at: string
   completed_at: string | null
+  position: number
 }
 
 describe('GET /api/backlog/items', () => {
@@ -159,11 +160,139 @@ describe('DELETE /api/backlog/items/:id', () => {
 })
 
 describe('GET /api/backlog/items after mutations', () => {
-  it('orders by created_at DESC', async () => {
+  it('orders by position ASC (newest items first by default)', async () => {
     const res = await fetch(`${baseUrl()}/api/backlog/items`)
     const items = await res.json() as Item[]
     for (let i = 1; i < items.length; i++) {
-      assert.ok(items[i - 1].created_at >= items[i].created_at)
+      assert.ok(items[i - 1].position <= items[i].position)
     }
+  })
+})
+
+describe('POST /api/backlog/items position behavior', () => {
+  async function postItem(text: string): Promise<Item> {
+    const res = await fetch(`${baseUrl()}/api/backlog/items`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+    return res.json() as Promise<Item>
+  }
+
+  it('places newly created items at the top of the list', async () => {
+    const a = await postItem('older')
+    const b = await postItem('newer')
+    assert.ok(b.position < a.position)
+
+    const list = await (await fetch(`${baseUrl()}/api/backlog/items`)).json() as Item[]
+    const idxA = list.findIndex((i) => i.id === a.id)
+    const idxB = list.findIndex((i) => i.id === b.id)
+    assert.ok(idxB < idxA, 'newer item should appear before older')
+  })
+})
+
+describe('POST /api/backlog/items/reorder', () => {
+  async function postItem(text: string): Promise<Item> {
+    const res = await fetch(`${baseUrl()}/api/backlog/items`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+    return res.json() as Promise<Item>
+  }
+  async function listIds(): Promise<number[]> {
+    const list = await (await fetch(`${baseUrl()}/api/backlog/items`)).json() as Item[]
+    return list.map((i) => i.id)
+  }
+
+  it('reorders the supplied ids in the given order', async () => {
+    const a = await postItem('a')
+    const b = await postItem('b')
+    const c = await postItem('c')
+    // default order: c, b, a (newest first)
+    const before = await listIds()
+    assert.deepEqual(before.slice(0, 3), [c.id, b.id, a.id])
+
+    const res = await fetch(`${baseUrl()}/api/backlog/items/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [a.id, b.id, c.id] }),
+    })
+    assert.equal(res.status, 204)
+
+    const after = await listIds()
+    assert.deepEqual(after.slice(0, 3), [a.id, b.id, c.id])
+  })
+
+  it('persists the new order across subsequent reads', async () => {
+    const x = await postItem('x')
+    const y = await postItem('y')
+    await fetch(`${baseUrl()}/api/backlog/items/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [x.id, y.id] }),
+    })
+    const first = await listIds()
+    const second = await listIds()
+    assert.deepEqual(first, second)
+    const ix = first.indexOf(x.id)
+    const iy = first.indexOf(y.id)
+    assert.ok(ix < iy)
+  })
+
+  it('only changes positions of the supplied ids', async () => {
+    const p = await postItem('p')
+    const q = await postItem('q')
+    const r = await postItem('r')
+    // reorder only p and r — q's position must not move relative to others
+    const before = await listIds()
+    const qIdxBefore = before.indexOf(q.id)
+
+    await fetch(`${baseUrl()}/api/backlog/items/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [p.id, r.id] }),
+    })
+
+    const after = await listIds()
+    assert.equal(after.indexOf(q.id), qIdxBefore, 'q should not have moved')
+    assert.ok(after.indexOf(p.id) < after.indexOf(r.id))
+  })
+
+  it('returns 400 when ids is not an array', async () => {
+    const res = await fetch(`${baseUrl()}/api/backlog/items/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: 'nope' }),
+    })
+    assert.equal(res.status, 400)
+  })
+
+  it('returns 400 when ids is empty', async () => {
+    const res = await fetch(`${baseUrl()}/api/backlog/items/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [] }),
+    })
+    assert.equal(res.status, 400)
+  })
+
+  it('returns 400 when ids contains non-integers', async () => {
+    const res = await fetch(`${baseUrl()}/api/backlog/items/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [1, 'two'] }),
+    })
+    assert.equal(res.status, 400)
+  })
+
+  it('returns 400 when an id is not found', async () => {
+    const item = await postItem('alone')
+    const res = await fetch(`${baseUrl()}/api/backlog/items/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [item.id, 9999999] }),
+    })
+    assert.equal(res.status, 400)
   })
 })
