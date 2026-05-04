@@ -63,6 +63,11 @@ const COURSES: CourseImage[] = [
     image: '/golf/courses/cantiague.jpg',
     aliases: ['Cantiague', 'Cantiague Park Golf Course'],
   },
+  {
+    name: 'Bethpage Yellow',
+    image: '/golf/courses/bethpage_yellow.jpeg',
+    aliases: ['Bethpage State Park Yellow', 'Bethpage Yellow Course'],
+  },
 ]
 
 function normalize(s: string): string {
