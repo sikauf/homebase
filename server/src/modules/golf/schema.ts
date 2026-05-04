@@ -30,4 +30,8 @@ export const migrations: Migration[] = [
       date   TEXT NOT NULL
     )`,
   },
+  {
+    id: 'golf_rounds_holes_v1',
+    up: `ALTER TABLE golf_rounds ADD COLUMN holes INTEGER NOT NULL DEFAULT 18`,
+  },
 ]

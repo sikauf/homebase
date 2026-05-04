@@ -29,10 +29,12 @@ describe('POST /api/golf/rounds', () => {
   it('creates a round and returns it', async () => {
     const res = await post('/api/golf/rounds', { course: 'Augusta National', score: 72, par: 72, putts: 28 })
     assert.equal(res.status, 201)
-    const body = await res.json() as { course: string; score: number; id: number }
+    const body = await res.json() as { course: string; score: number; id: number; holes: number; par: number }
     assert.equal(body.course, 'Augusta National')
     assert.equal(body.score, 72)
     assert.ok(body.id)
+    assert.equal(body.holes, 18)
+    assert.equal(body.par, 72)
   })
 
   it('returns 400 when course is missing', async () => {
@@ -40,16 +42,47 @@ describe('POST /api/golf/rounds', () => {
     assert.equal(res.status, 400)
     assert.ok((await res.json() as { error: string }).error)
   })
+
+  it('creates a 9-hole round with default par 36', async () => {
+    const res = await post('/api/golf/rounds', { course: 'Local Par 3', holes: 9, score: 40 })
+    assert.equal(res.status, 201)
+    const body = await res.json() as { holes: number; par: number; score: number }
+    assert.equal(body.holes, 9)
+    assert.equal(body.par, 36)
+    assert.equal(body.score, 40)
+  })
+
+  it('honors explicit par for 9-hole rounds', async () => {
+    const res = await post('/api/golf/rounds', { course: 'Par 3 Course', holes: 9, par: 27, score: 32 })
+    assert.equal(res.status, 201)
+    const body = await res.json() as { holes: number; par: number }
+    assert.equal(body.holes, 9)
+    assert.equal(body.par, 27)
+  })
 })
 
 describe('GET /api/golf/stats', () => {
-  it('returns stats with expected fields', async () => {
+  it('returns stats split by 18-hole and 9-hole', async () => {
     const res = await get('/api/golf/stats')
     assert.equal(res.status, 200)
-    const body = await res.json() as Record<string, unknown>
-    assert.ok('total_rounds' in body)
-    assert.ok('best_score' in body)
-    assert.ok('avg_score' in body)
+    const body = await res.json() as { eighteen: Record<string, unknown>; nine: Record<string, unknown> }
+    assert.ok('total_rounds' in body.eighteen)
+    assert.ok('best_score' in body.eighteen)
+    assert.ok('avg_score' in body.eighteen)
+    assert.ok('total_rounds' in body.nine)
+    assert.ok('best_score' in body.nine)
+    assert.ok('avg_score' in body.nine)
+  })
+
+  it('counts only same-holes rounds in each bucket', async () => {
+    await post('/api/golf/rounds', { course: 'X18', holes: 18, score: 90 })
+    await post('/api/golf/rounds', { course: 'X9', holes: 9, score: 45 })
+    const body = await (await get('/api/golf/stats')).json() as {
+      eighteen: { total_rounds: number }
+      nine: { total_rounds: number }
+    }
+    assert.ok(body.eighteen.total_rounds >= 1)
+    assert.ok(body.nine.total_rounds >= 1)
   })
 })
 

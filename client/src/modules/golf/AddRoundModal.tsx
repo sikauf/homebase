@@ -31,6 +31,8 @@ const labelStyle: React.CSSProperties = {
 export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps) {
   const [saving, setSaving] = useState(false)
   const [courseFocused, setCourseFocused] = useState(false)
+  const [holes, setHoles] = useState<9 | 18>(18)
+  const [parEdited, setParEdited] = useState(false)
   const [form, setForm] = useState({
     course: '',
     tees: '',
@@ -42,6 +44,18 @@ export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps)
     notes: '',
     played_at: new Date().toISOString().split('T')[0],
   })
+
+  function selectHoles(next: 9 | 18) {
+    setHoles(next)
+    if (!parEdited) {
+      setForm((f) => ({ ...f, par: next === 9 ? '36' : '72' }))
+    }
+  }
+
+  function setPar(e: React.ChangeEvent<HTMLInputElement>) {
+    setParEdited(true)
+    setForm((f) => ({ ...f, par: e.target.value }))
+  }
 
   const suggestions = useMemo(() => getCourseSuggestions(form.course), [form.course])
   const showSuggestions =
@@ -68,12 +82,13 @@ export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps)
         course: form.course.trim(),
         tees: form.tees || undefined,
         score: form.score ? Number(form.score) : undefined,
-        par: form.par ? Number(form.par) : 72,
+        par: form.par ? Number(form.par) : (holes === 9 ? 36 : 72),
         fairways: form.fairways ? Number(form.fairways) : undefined,
         gir: form.gir ? Number(form.gir) : undefined,
         putts: form.putts ? Number(form.putts) : undefined,
         notes: form.notes || undefined,
         played_at: form.played_at ? `${form.played_at} 12:00:00` : undefined,
+        holes,
       }
       await onSubmit(payload)
       onClose()
@@ -175,6 +190,30 @@ export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps)
             )}
           </div>
 
+          <div>
+            <label style={labelStyle}>Holes</label>
+            <div className="flex gap-2">
+              {([18, 9] as const).map((n) => {
+                const active = holes === n
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => selectHoles(n)}
+                    className="flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors"
+                    style={{
+                      background: active ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                      color: active ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.5)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    {n} holes
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label style={labelStyle}>Tees</label>
@@ -189,26 +228,49 @@ export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps)
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label style={labelStyle}>Score</label>
-              <input type="number" value={form.score} onChange={set('score')} placeholder="88" min={50} max={150} style={inputStyle} />
+              <input
+                type="number"
+                value={form.score}
+                onChange={set('score')}
+                placeholder={holes === 9 ? '44' : '88'}
+                min={holes === 9 ? 25 : 50}
+                max={holes === 9 ? 80 : 150}
+                style={inputStyle}
+              />
             </div>
             <div>
               <label style={labelStyle}>Par</label>
-              <input type="number" value={form.par} onChange={set('par')} min={60} max={80} style={inputStyle} />
+              <input
+                type="number"
+                value={form.par}
+                onChange={setPar}
+                min={holes === 9 ? 27 : 60}
+                max={holes === 9 ? 40 : 80}
+                style={inputStyle}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label style={labelStyle}>FIR</label>
-              <input type="number" value={form.fairways} onChange={set('fairways')} placeholder="—" min={0} max={18} style={inputStyle} />
+              <input type="number" value={form.fairways} onChange={set('fairways')} placeholder="—" min={0} max={holes} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>GIR</label>
-              <input type="number" value={form.gir} onChange={set('gir')} placeholder="—" min={0} max={18} style={inputStyle} />
+              <input type="number" value={form.gir} onChange={set('gir')} placeholder="—" min={0} max={holes} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Putts</label>
-              <input type="number" value={form.putts} onChange={set('putts')} placeholder="—" min={18} max={72} style={inputStyle} />
+              <input
+                type="number"
+                value={form.putts}
+                onChange={set('putts')}
+                placeholder="—"
+                min={holes === 9 ? 9 : 18}
+                max={holes === 9 ? 36 : 72}
+                style={inputStyle}
+              />
             </div>
           </div>
 

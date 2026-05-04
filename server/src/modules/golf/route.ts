@@ -2,20 +2,19 @@ import { Router, Request, Response } from 'express'
 import db from '../../db/client'
 
 const SELECT_ALL_ROUNDS = db.prepare('SELECT * FROM golf_rounds ORDER BY played_at DESC')
-const SELECT_STATS = db.prepare(
-  `SELECT
+const STATS_SELECT = `SELECT
     COUNT(*) as total_rounds,
     MIN(score) as best_score,
     ROUND(AVG(score), 1) as avg_score,
     ROUND(AVG(putts), 1) as avg_putts,
     ROUND(AVG(gir), 1) as avg_gir,
     ROUND(AVG(fairways), 1) as avg_fairways
-  FROM golf_rounds`
-)
+  FROM golf_rounds WHERE holes = ?`
+const SELECT_STATS = db.prepare(STATS_SELECT)
 const SELECT_ROUND = db.prepare('SELECT * FROM golf_rounds WHERE id = ?')
 const INSERT_ROUND = db.prepare(
-  `INSERT INTO golf_rounds (course, tees, score, par, fairways, gir, putts, notes, played_at)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  `INSERT INTO golf_rounds (course, tees, score, par, fairways, gir, putts, notes, played_at, holes)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 )
 const DELETE_ROUND = db.prepare('DELETE FROM golf_rounds WHERE id = ?')
 
@@ -35,11 +34,14 @@ router.get('/rounds', (_req: Request, res: Response) => {
 })
 
 router.get('/stats', (_req: Request, res: Response) => {
-  res.json(SELECT_STATS.get())
+  res.json({
+    eighteen: SELECT_STATS.get(18),
+    nine: SELECT_STATS.get(9),
+  })
 })
 
 router.post('/rounds', (req: Request, res: Response) => {
-  const { course, tees, score, par, fairways, gir, putts, notes, played_at } = req.body as {
+  const { course, tees, score, par, fairways, gir, putts, notes, played_at, holes } = req.body as {
     course: string
     tees?: string
     score?: number
@@ -49,6 +51,7 @@ router.post('/rounds', (req: Request, res: Response) => {
     putts?: number
     notes?: string
     played_at?: string
+    holes?: number
   }
 
   if (!course) {
@@ -56,7 +59,21 @@ router.post('/rounds', (req: Request, res: Response) => {
     return
   }
 
-  const result = INSERT_ROUND.run(course, tees ?? null, score ?? null, par ?? 72, fairways ?? null, gir ?? null, putts ?? null, notes ?? null, played_at ?? null)
+  const holesValue = holes === 9 ? 9 : 18
+  const defaultPar = holesValue === 9 ? 36 : 72
+
+  const result = INSERT_ROUND.run(
+    course,
+    tees ?? null,
+    score ?? null,
+    par ?? defaultPar,
+    fairways ?? null,
+    gir ?? null,
+    putts ?? null,
+    notes ?? null,
+    played_at ?? null,
+    holesValue,
+  )
 
   const round = SELECT_ROUND.get(result.lastInsertRowid)
   res.status(201).json(round)
@@ -71,7 +88,7 @@ router.patch('/rounds/:id', (req: Request, res: Response) => {
     return
   }
 
-  const allowed = ['course', 'tees', 'score', 'par', 'fairways', 'gir', 'putts', 'notes', 'played_at']
+  const allowed = ['course', 'tees', 'score', 'par', 'fairways', 'gir', 'putts', 'notes', 'played_at', 'holes']
   const body = req.body as Record<string, unknown>
   const keys = Object.keys(body).filter((k) => allowed.includes(k))
 

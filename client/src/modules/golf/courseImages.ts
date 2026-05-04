@@ -58,6 +58,11 @@ const COURSES: CourseImage[] = [
     image: '/golf/courses/sunken_meadow.webp',
     aliases: ['Sunken Meadow State Park', 'Sunken Meadow Golf Course'],
   },
+  {
+    name: 'Cantiague Park',
+    image: '/golf/courses/cantiague.jpg',
+    aliases: ['Cantiague', 'Cantiague Park Golf Course'],
+  },
 ]
 
 function normalize(s: string): string {

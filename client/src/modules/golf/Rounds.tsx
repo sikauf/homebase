@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import PageWrapper from '../../components/layout/PageWrapper'
 import RoundCard from './RoundCard'
 import AddRoundModal from './AddRoundModal'
@@ -7,6 +7,7 @@ import MyrtieTripSection from './MyrtieTripSection'
 import TeeTimesSection from './TeeTimesSection'
 import { useGolf } from '../../hooks/useGolf'
 import { useTeeTimes } from '../../hooks/useTeeTimes'
+import type { GolfRound, GolfStatsBucket } from '../../types/golf'
 
 function StatPill({ label, value }: { label: string; value: string | number | null }) {
   return (
@@ -17,11 +18,51 @@ function StatPill({ label, value }: { label: string; value: string | number | nu
   )
 }
 
+function RoundsGroup({
+  title,
+  rounds,
+  stats,
+  onDelete,
+}: {
+  title: string
+  rounds: GolfRound[]
+  stats: GolfStatsBucket | undefined
+  onDelete: (id: number) => void
+}) {
+  if (rounds.length === 0) return null
+  return (
+    <div className="mb-10">
+      <h2
+        className="text-xs uppercase tracking-widest mb-3"
+        style={{ color: 'rgba(255,255,255,0.45)' }}
+      >
+        {title}
+      </h2>
+      {stats && stats.total_rounds > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <StatPill label="Rounds" value={stats.total_rounds} />
+          <StatPill label="Avg Score" value={stats.avg_score} />
+          <StatPill label="Best Score" value={stats.best_score} />
+          <StatPill label="Avg Putts" value={stats.avg_putts} />
+        </div>
+      )}
+      <div className="space-y-3">
+        {rounds.map((round) => (
+          <RoundCard key={round.id} round={round} onDelete={onDelete} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Rounds() {
   const { rounds, stats, loading, error, addRound, removeRound } = useGolf()
   const { teeTimes, addTeeTime } = useTeeTimes()
   const [showModal, setShowModal] = useState(false)
   const [showTeeTimeModal, setShowTeeTimeModal] = useState(false)
+
+  const eighteen = useMemo(() => rounds.filter((r) => r.holes !== 9), [rounds])
+  const nine = useMemo(() => rounds.filter((r) => r.holes === 9), [rounds])
 
   return (
     <>
@@ -58,14 +99,6 @@ export default function Rounds() {
           <>
             <TeeTimesSection teeTimes={teeTimes} onAdd={() => setShowTeeTimeModal(true)} />
             <MyrtieTripSection />
-            {stats && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-                <StatPill label="Rounds" value={stats.total_rounds} />
-                <StatPill label="Avg Score" value={stats.avg_score} />
-                <StatPill label="Best Score" value={stats.best_score} />
-                <StatPill label="Avg Putts" value={stats.avg_putts} />
-              </div>
-            )}
 
             {rounds.length === 0 ? (
               <div className="text-center py-20">
@@ -73,11 +106,10 @@ export default function Rounds() {
                 <p className="text-gray-500 text-sm">No rounds yet. Log your first round!</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {rounds.map((round) => (
-                  <RoundCard key={round.id} round={round} onDelete={removeRound} />
-                ))}
-              </div>
+              <>
+                <RoundsGroup title="18 Holes" rounds={eighteen} stats={stats?.eighteen} onDelete={removeRound} />
+                <RoundsGroup title="9 Holes" rounds={nine} stats={stats?.nine} onDelete={removeRound} />
+              </>
             )}
           </>
         )}

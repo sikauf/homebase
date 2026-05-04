@@ -9,15 +9,21 @@ export interface GolfRound {
   putts: number | null
   notes: string | null
   played_at: string
+  holes: number
 }
 
-export interface GolfStats {
+export interface GolfStatsBucket {
   total_rounds: number
   best_score: number | null
   avg_score: number | null
   avg_putts: number | null
   avg_gir: number | null
   avg_fairways: number | null
+}
+
+export interface GolfStats {
+  eighteen: GolfStatsBucket
+  nine: GolfStatsBucket
 }
 
 export interface CreateRoundPayload {
@@ -30,6 +36,7 @@ export interface CreateRoundPayload {
   putts?: number
   notes?: string
   played_at?: string
+  holes?: number
 }
 
 export interface TeeTime {
