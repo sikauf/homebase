@@ -34,4 +34,18 @@ export const migrations: Migration[] = [
     id: 'golf_rounds_holes_v1',
     up: `ALTER TABLE golf_rounds ADD COLUMN holes INTEGER NOT NULL DEFAULT 18`,
   },
+  {
+    id: 'golf_range_days_types_v1',
+    up: (db) => {
+      db.exec(`CREATE TABLE golf_range_days_new (
+        date TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'ball_striking',
+        PRIMARY KEY (date, type)
+      )`)
+      db.exec(`INSERT INTO golf_range_days_new (date, type)
+        SELECT date, 'ball_striking' FROM golf_range_days`)
+      db.exec(`DROP TABLE golf_range_days`)
+      db.exec(`ALTER TABLE golf_range_days_new RENAME TO golf_range_days`)
+    },
+  },
 ]

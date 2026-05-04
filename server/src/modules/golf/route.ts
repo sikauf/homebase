@@ -18,9 +18,10 @@ const INSERT_ROUND = db.prepare(
 )
 const DELETE_ROUND = db.prepare('DELETE FROM golf_rounds WHERE id = ?')
 
-const SELECT_ALL_RANGE_DAYS = db.prepare('SELECT date FROM golf_range_days ORDER BY date ASC')
-const INSERT_RANGE_DAY = db.prepare('INSERT OR IGNORE INTO golf_range_days (date) VALUES (?)')
-const DELETE_RANGE_DAY = db.prepare('DELETE FROM golf_range_days WHERE date = ?')
+const VALID_RANGE_TYPES = new Set(['ball_striking', 'putting', 'chipping'])
+const SELECT_ALL_RANGE_DAYS = db.prepare('SELECT date, type FROM golf_range_days ORDER BY date ASC, type ASC')
+const INSERT_RANGE_DAY = db.prepare('INSERT OR IGNORE INTO golf_range_days (date, type) VALUES (?, ?)')
+const DELETE_RANGE_DAY_TYPE = db.prepare('DELETE FROM golf_range_days WHERE date = ? AND type = ?')
 
 const SELECT_ALL_TEE_TIMES = db.prepare('SELECT id, course, date FROM golf_tee_times ORDER BY date ASC, id ASC')
 const SELECT_TEE_TIME = db.prepare('SELECT id, course, date FROM golf_tee_times WHERE id = ?')
@@ -116,23 +117,35 @@ router.delete('/rounds/:id', (req: Request, res: Response) => {
 })
 
 router.get('/range-days', (_req: Request, res: Response) => {
-  const rows = SELECT_ALL_RANGE_DAYS.all() as { date: string }[]
-  res.json(rows.map((r) => r.date))
+  const rows = SELECT_ALL_RANGE_DAYS.all() as { date: string; type: string }[]
+  const grouped = new Map<string, string[]>()
+  for (const r of rows) {
+    const arr = grouped.get(r.date) ?? []
+    arr.push(r.type)
+    grouped.set(r.date, arr)
+  }
+  res.json(Array.from(grouped, ([date, types]) => ({ date, types })))
 })
 
 router.post('/range-days', (req: Request, res: Response) => {
-  const { date } = req.body
+  const { date, type } = req.body as { date?: string; type?: string }
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     res.status(400).json({ error: 'date is required and must be YYYY-MM-DD' }); return
   }
-  INSERT_RANGE_DAY.run(date)
-  res.status(201).json({ date })
+  if (!type || !VALID_RANGE_TYPES.has(type)) {
+    res.status(400).json({ error: 'type is required and must be one of ball_striking, putting, chipping' }); return
+  }
+  INSERT_RANGE_DAY.run(date, type)
+  res.status(201).json({ date, type })
 })
 
-router.delete('/range-days/:date', (req: Request, res: Response) => {
-  const { date } = req.params
-  const result = DELETE_RANGE_DAY.run(date)
-  if (result.changes === 0) { res.status(404).json({ error: 'Date not found' }); return }
+router.delete('/range-days/:date/:type', (req: Request, res: Response) => {
+  const { date, type } = req.params
+  if (!VALID_RANGE_TYPES.has(type)) {
+    res.status(400).json({ error: 'invalid type' }); return
+  }
+  const result = DELETE_RANGE_DAY_TYPE.run(date, type)
+  if (result.changes === 0) { res.status(404).json({ error: 'Entry not found' }); return }
   res.status(204).end()
 })
 

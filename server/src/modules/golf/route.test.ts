@@ -121,46 +121,80 @@ describe('GET /api/golf/range-days', () => {
 })
 
 describe('POST /api/golf/range-days', () => {
-  it('marks a range day and returns it', async () => {
-    const res = await post('/api/golf/range-days', { date: '2026-04-10' })
+  it('marks a range day with a type and returns it', async () => {
+    const res = await post('/api/golf/range-days', { date: '2026-04-10', type: 'ball_striking' })
     assert.equal(res.status, 201)
-    const body = await res.json() as Record<string, unknown>
+    const body = await res.json() as { date: string; type: string }
     assert.equal(body.date, '2026-04-10')
+    assert.equal(body.type, 'ball_striking')
   })
 
   it('returns 400 when date is missing', async () => {
-    assert.equal((await post('/api/golf/range-days', {})).status, 400)
+    assert.equal((await post('/api/golf/range-days', { type: 'putting' })).status, 400)
   })
 
   it('returns 400 when date format is invalid', async () => {
-    assert.equal((await post('/api/golf/range-days', { date: 'not-a-date' })).status, 400)
+    assert.equal((await post('/api/golf/range-days', { date: 'not-a-date', type: 'putting' })).status, 400)
   })
 
-  it('is idempotent — marking the same day twice does not error', async () => {
-    await post('/api/golf/range-days', { date: '2026-04-11' })
-    assert.equal((await post('/api/golf/range-days', { date: '2026-04-11' })).status, 201)
+  it('returns 400 when type is missing', async () => {
+    assert.equal((await post('/api/golf/range-days', { date: '2026-04-10' })).status, 400)
+  })
+
+  it('returns 400 when type is invalid', async () => {
+    assert.equal((await post('/api/golf/range-days', { date: '2026-04-10', type: 'driving' })).status, 400)
+  })
+
+  it('is idempotent — marking the same (date, type) twice does not error', async () => {
+    await post('/api/golf/range-days', { date: '2026-04-11', type: 'putting' })
+    assert.equal((await post('/api/golf/range-days', { date: '2026-04-11', type: 'putting' })).status, 201)
+  })
+
+  it('allows multiple types on the same day', async () => {
+    await post('/api/golf/range-days', { date: '2026-04-13', type: 'ball_striking' })
+    await post('/api/golf/range-days', { date: '2026-04-13', type: 'putting' })
+    const res = await post('/api/golf/range-days', { date: '2026-04-13', type: 'chipping' })
+    assert.equal(res.status, 201)
   })
 })
 
-describe('DELETE /api/golf/range-days/:date', () => {
-  it('unmarks a previously marked day', async () => {
-    await post('/api/golf/range-days', { date: '2026-04-12' })
-    assert.equal((await del('/api/golf/range-days/2026-04-12')).status, 204)
+describe('DELETE /api/golf/range-days/:date/:type', () => {
+  it('unmarks a previously marked (date, type)', async () => {
+    await post('/api/golf/range-days', { date: '2026-04-12', type: 'chipping' })
+    assert.equal((await del('/api/golf/range-days/2026-04-12/chipping')).status, 204)
   })
 
-  it('returns 404 for a date that was never marked', async () => {
-    assert.equal((await del('/api/golf/range-days/2030-12-31')).status, 404)
+  it('only removes the specified type, leaving other types for that date', async () => {
+    await post('/api/golf/range-days', { date: '2026-04-14', type: 'ball_striking' })
+    await post('/api/golf/range-days', { date: '2026-04-14', type: 'putting' })
+    assert.equal((await del('/api/golf/range-days/2026-04-14/ball_striking')).status, 204)
+    const body = await (await get('/api/golf/range-days')).json() as { date: string; types: string[] }[]
+    const entry = body.find((d) => d.date === '2026-04-14')
+    assert.ok(entry)
+    assert.deepEqual(entry!.types, ['putting'])
+  })
+
+  it('returns 404 for a (date, type) that was never marked', async () => {
+    assert.equal((await del('/api/golf/range-days/2030-12-31/putting')).status, 404)
+  })
+
+  it('returns 400 for an invalid type', async () => {
+    assert.equal((await del('/api/golf/range-days/2026-04-12/driving')).status, 400)
   })
 })
 
 describe('GET /api/golf/range-days after mutations', () => {
-  it('returns marked dates sorted ascending', async () => {
-    const body = await (await get('/api/golf/range-days')).json() as string[]
-    assert.ok(body.includes('2026-04-10'))
-    assert.ok(body.includes('2026-04-11'))
-    assert.ok(!body.includes('2026-04-12'))
-    for (let i = 1; i < body.length; i++) {
-      assert.ok(body[i] >= body[i - 1])
+  it('returns grouped entries with date and types, sorted by date ascending', async () => {
+    const body = await (await get('/api/golf/range-days')).json() as { date: string; types: string[] }[]
+    const dates = body.map((e) => e.date)
+    assert.ok(dates.includes('2026-04-10'))
+    assert.ok(dates.includes('2026-04-11'))
+    assert.ok(!dates.includes('2026-04-12'))
+    const apr13 = body.find((e) => e.date === '2026-04-13')
+    assert.ok(apr13)
+    assert.deepEqual([...apr13!.types].sort(), ['ball_striking', 'chipping', 'putting'])
+    for (let i = 1; i < dates.length; i++) {
+      assert.ok(dates[i] >= dates[i - 1])
     }
   })
 })
