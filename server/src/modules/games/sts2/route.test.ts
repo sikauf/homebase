@@ -8,12 +8,12 @@ import { createApp } from '../../../app'
 
 const MOCK_SAVE = {
   character_stats: [
-    { id: 'CHARACTER.IRONCLAD',         max_ascension: 5, preferred_ascension: 5, total_wins: 6,  total_losses: 15 },
-    { id: 'CHARACTER.SILENT',           max_ascension: 4, preferred_ascension: 4, total_wins: 4,  total_losses: 9  },
-    { id: 'CHARACTER.DEFECT',           max_ascension: 8, preferred_ascension: 8, total_wins: 8,  total_losses: 3  },
-    { id: 'CHARACTER.REGENT',           max_ascension: 3, preferred_ascension: 3, total_wins: 3,  total_losses: 3  },
-    { id: 'CHARACTER.NECROBINDER',      max_ascension: 1, preferred_ascension: 1, total_wins: 1,  total_losses: 7  },
-    { id: 'CHARACTER.RANDOM_CHARACTER', max_ascension: 0, preferred_ascension: 0, total_wins: 0,  total_losses: 0  },
+    { id: 'CHARACTER.IRONCLAD',         max_ascension: 10, preferred_ascension: 10, total_wins: 11, total_losses: 15 },
+    { id: 'CHARACTER.SILENT',           max_ascension: 4,  preferred_ascension: 4,  total_wins: 4,  total_losses: 9  },
+    { id: 'CHARACTER.DEFECT',           max_ascension: 8,  preferred_ascension: 8,  total_wins: 8,  total_losses: 3  },
+    { id: 'CHARACTER.REGENT',           max_ascension: 11, preferred_ascension: 11, total_wins: 14, total_losses: 3  },
+    { id: 'CHARACTER.NECROBINDER',      max_ascension: 1,  preferred_ascension: 1,  total_wins: 1,  total_losses: 7  },
+    { id: 'CHARACTER.RANDOM_CHARACTER', max_ascension: 0,  preferred_ascension: 0,  total_wins: 0,  total_losses: 0  },
   ],
 }
 
@@ -96,5 +96,81 @@ describe('GET /api/games/sts2/ascensions', () => {
     const res = await fetch(`${base}/api/games/sts2/ascensions`)
     assert.equal(res.status, 503)
     process.env.STS2_SAVE_PATH = orig
+  })
+
+  it('a10_completed defaults to false for eligible characters with no row', async () => {
+    const res = await fetch(`${base}/api/games/sts2/ascensions`)
+    const body = await res.json() as { id: string; a10_completed: boolean }[]
+    assert.equal(body.find((c) => c.id === 'CHARACTER.IRONCLAD')!.a10_completed, false)
+  })
+
+  it('a10_completed is auto-true when max_ascension >= 11', async () => {
+    const res = await fetch(`${base}/api/games/sts2/ascensions`)
+    const body = await res.json() as { id: string; a10_completed: boolean }[]
+    assert.equal(body.find((c) => c.id === 'CHARACTER.REGENT')!.a10_completed, true)
+  })
+
+  it('a10_completed is false for characters below A10', async () => {
+    const res = await fetch(`${base}/api/games/sts2/ascensions`)
+    const body = await res.json() as { id: string; a10_completed: boolean }[]
+    assert.equal(body.find((c) => c.id === 'CHARACTER.SILENT')!.a10_completed, false)
+    assert.equal(body.find((c) => c.id === 'CHARACTER.DEFECT')!.a10_completed, false)
+  })
+})
+
+describe('POST /api/games/sts2/a10/:character_id', () => {
+  it('marks A10 for an eligible character', async () => {
+    const res = await fetch(`${base}/api/games/sts2/a10/CHARACTER.IRONCLAD`, { method: 'POST' })
+    assert.equal(res.status, 201)
+    const body = await res.json() as { character_id: string; a10_completed: boolean }
+    assert.equal(body.character_id, 'CHARACTER.IRONCLAD')
+    assert.equal(body.a10_completed, true)
+
+    const list = await (await fetch(`${base}/api/games/sts2/ascensions`)).json() as { id: string; a10_completed: boolean }[]
+    assert.equal(list.find((c) => c.id === 'CHARACTER.IRONCLAD')!.a10_completed, true)
+  })
+
+  it('is idempotent', async () => {
+    await fetch(`${base}/api/games/sts2/a10/CHARACTER.IRONCLAD`, { method: 'POST' })
+    const res = await fetch(`${base}/api/games/sts2/a10/CHARACTER.IRONCLAD`, { method: 'POST' })
+    assert.equal(res.status, 201)
+  })
+
+  it('returns 400 for a character below A10', async () => {
+    const res = await fetch(`${base}/api/games/sts2/a10/CHARACTER.SILENT`, { method: 'POST' })
+    assert.equal(res.status, 400)
+  })
+
+  it('returns 400 for an unknown character', async () => {
+    const res = await fetch(`${base}/api/games/sts2/a10/CHARACTER.BOGUS`, { method: 'POST' })
+    assert.equal(res.status, 400)
+  })
+})
+
+describe('DELETE /api/games/sts2/a10/:character_id', () => {
+  it('unmarks a previously marked character', async () => {
+    await fetch(`${base}/api/games/sts2/a10/CHARACTER.IRONCLAD`, { method: 'POST' })
+    const res = await fetch(`${base}/api/games/sts2/a10/CHARACTER.IRONCLAD`, { method: 'DELETE' })
+    assert.equal(res.status, 204)
+
+    const list = await (await fetch(`${base}/api/games/sts2/ascensions`)).json() as { id: string; a10_completed: boolean }[]
+    assert.equal(list.find((c) => c.id === 'CHARACTER.IRONCLAD')!.a10_completed, false)
+  })
+
+  it('is a no-op for a character that was not marked', async () => {
+    const res = await fetch(`${base}/api/games/sts2/a10/CHARACTER.DEFECT`, { method: 'DELETE' })
+    assert.equal(res.status, 204)
+  })
+
+  it('returns 400 for an unknown character', async () => {
+    const res = await fetch(`${base}/api/games/sts2/a10/CHARACTER.BOGUS`, { method: 'DELETE' })
+    assert.equal(res.status, 400)
+  })
+
+  it('cannot unmark a character with max_ascension >= 11 (DB row removed but a10_completed still true)', async () => {
+    const res = await fetch(`${base}/api/games/sts2/a10/CHARACTER.REGENT`, { method: 'DELETE' })
+    assert.equal(res.status, 204)
+    const list = await (await fetch(`${base}/api/games/sts2/ascensions`)).json() as { id: string; a10_completed: boolean }[]
+    assert.equal(list.find((c) => c.id === 'CHARACTER.REGENT')!.a10_completed, true)
   })
 })

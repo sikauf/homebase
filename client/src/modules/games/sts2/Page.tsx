@@ -1,7 +1,81 @@
 import { useEffect, useState } from 'react'
 import GamePageShell from '../_shared/GamePageShell'
 import { CONFIG } from './data'
-import { CharacterAscension, fetchAscensions } from './api'
+import { CharacterAscension, fetchAscensions, setA10Completed } from './api'
+
+const GOLD = '212,175,55'
+
+function LaurelHalf({ side, color, opacity }: { side: 'left' | 'right'; color: string; opacity: number }) {
+  return (
+    <svg
+      viewBox="0 0 30 80"
+      width="22"
+      height="60"
+      style={{
+        color: `rgba(${color},${opacity})`,
+        transform: side === 'right' ? 'scaleX(-1)' : undefined,
+        transition: 'color 0.2s ease',
+      }}
+      aria-hidden
+    >
+      <g fill="currentColor" stroke="currentColor" strokeWidth="0.6">
+        <path d="M 25 75 Q 10 45 22 8" fill="none" />
+        <ellipse cx="22" cy="65" rx="4" ry="2"   transform="rotate(-40 22 65)" />
+        <ellipse cx="17" cy="55" rx="4.2" ry="2" transform="rotate(-25 17 55)" />
+        <ellipse cx="14" cy="44" rx="4.4" ry="2" transform="rotate(-10 14 44)" />
+        <ellipse cx="14" cy="33" rx="4.4" ry="2" transform="rotate(5 14 33)" />
+        <ellipse cx="17" cy="22" rx="4.2" ry="2" transform="rotate(20 17 22)" />
+        <ellipse cx="22" cy="12" rx="3.6" ry="1.8" transform="rotate(35 22 12)" />
+      </g>
+    </svg>
+  )
+}
+
+function A10Marker({
+  completed,
+  locked,
+  onToggle,
+}: {
+  completed: boolean
+  locked: boolean
+  onToggle: () => void
+}) {
+  const color = completed ? GOLD : '255,255,255'
+  const opacity = completed ? 0.95 : 0.18
+  const title = locked
+    ? 'A10 cleared — confirmed by save'
+    : completed
+    ? 'A10 cleared — click to unmark'
+    : 'Mark A10 as cleared'
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); if (!locked) onToggle() }}
+      disabled={locked}
+      title={title}
+      aria-label={title}
+      className="absolute inset-0 flex items-center justify-center"
+      style={{
+        background: 'transparent',
+        cursor: locked ? 'default' : 'pointer',
+      }}
+    >
+      <div className="flex items-center" style={{ gap: '4.5rem' }}>
+        <LaurelHalf side="left"  color={color} opacity={opacity} />
+        <LaurelHalf side="right" color={color} opacity={opacity} />
+      </div>
+      {completed && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            inset: 0,
+            background: `radial-gradient(ellipse at center, rgba(${GOLD},0.18) 0%, transparent 60%)`,
+          }}
+        />
+      )}
+    </button>
+  )
+}
 
 function SkeletonCard() {
   return (
@@ -29,6 +103,14 @@ export default function SlayTheSpire2() {
       .finally(() => setLoading(false))
   }, [])
 
+  function toggleA10(c: CharacterAscension) {
+    const next = !c.a10_completed
+    setCharacters((prev) => prev.map((x) => x.id === c.id ? { ...x, a10_completed: next } : x))
+    setA10Completed(c.id, next).catch(() => {
+      setCharacters((prev) => prev.map((x) => x.id === c.id ? { ...x, a10_completed: !next } : x))
+    })
+  }
+
   return (
     <GamePageShell title="Ascension Progress">
       <div className="flex-1 px-5 pb-5 grid grid-cols-5 gap-3 min-h-0">
@@ -47,6 +129,8 @@ export default function SlayTheSpire2() {
           const cfg = CONFIG[c.id]
           if (!cfg) return null
           const isHovered = hoveredId === c.id
+          const showMarker = c.max_ascension >= 10
+          const markerLocked = c.max_ascension >= 11
 
           return (
             <div
@@ -96,7 +180,7 @@ export default function SlayTheSpire2() {
                   }}
                 />
                 <span
-                  className="text-7xl leading-none"
+                  className="text-7xl leading-none relative z-10"
                   style={{
                     fontFamily: "'Kreon', serif",
                     fontWeight: 700,
@@ -105,6 +189,13 @@ export default function SlayTheSpire2() {
                 >
                   {c.max_ascension}
                 </span>
+                {showMarker && (
+                  <A10Marker
+                    completed={c.a10_completed}
+                    locked={markerLocked}
+                    onToggle={() => toggleA10(c)}
+                  />
+                )}
               </div>
             </div>
           )
