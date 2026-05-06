@@ -7,7 +7,7 @@ import MyrtieTripSection from './MyrtieTripSection'
 import TeeTimesSection from './TeeTimesSection'
 import { useGolf } from '../../hooks/useGolf'
 import { useTeeTimes } from '../../hooks/useTeeTimes'
-import type { GolfRound, GolfStatsBucket } from '../../types/golf'
+import type { GolfRound, GolfStats } from '../../types/golf'
 
 function StatPill({ label, value }: { label: string; value: string | number | null }) {
   return (
@@ -26,7 +26,7 @@ function RoundsGroup({
 }: {
   title: string
   rounds: GolfRound[]
-  stats: GolfStatsBucket | undefined
+  stats?: GolfStats | null
   onDelete: (id: number) => void
 }) {
   if (rounds.length === 0) return null
@@ -61,8 +61,8 @@ export default function Rounds() {
   const [showModal, setShowModal] = useState(false)
   const [showTeeTimeModal, setShowTeeTimeModal] = useState(false)
 
-  const eighteen = useMemo(() => rounds.filter((r) => r.holes !== 9), [rounds])
-  const nine = useMemo(() => rounds.filter((r) => r.holes === 9), [rounds])
+  const eighteen = useMemo(() => rounds.filter((r) => r.holes >= 18), [rounds])
+  const nine = useMemo(() => rounds.filter((r) => r.holes < 18), [rounds])
 
   return (
     <>
@@ -107,8 +107,8 @@ export default function Rounds() {
               </div>
             ) : (
               <>
-                <RoundsGroup title="18 Holes" rounds={eighteen} stats={stats?.eighteen} onDelete={removeRound} />
-                <RoundsGroup title="9 Holes" rounds={nine} stats={stats?.nine} onDelete={removeRound} />
+                <RoundsGroup title="18 Holes" rounds={eighteen} stats={stats} onDelete={removeRound} />
+                <RoundsGroup title="9 Holes" rounds={nine} onDelete={removeRound} />
               </>
             )}
           </>

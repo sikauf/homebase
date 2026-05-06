@@ -59,30 +59,39 @@ describe('POST /api/golf/rounds', () => {
     assert.equal(body.holes, 9)
     assert.equal(body.par, 27)
   })
+
+  it('accepts arbitrary hole counts under 18 with par scaling', async () => {
+    const res = await post('/api/golf/rounds', { course: 'Quick 7', holes: 7, score: 32 })
+    assert.equal(res.status, 201)
+    const body = await res.json() as { holes: number; par: number }
+    assert.equal(body.holes, 7)
+    assert.equal(body.par, 28)
+  })
+
+  it('rejects holes outside 1-18', async () => {
+    assert.equal((await post('/api/golf/rounds', { course: 'X', holes: 0 })).status, 400)
+    assert.equal((await post('/api/golf/rounds', { course: 'X', holes: 19 })).status, 400)
+    assert.equal((await post('/api/golf/rounds', { course: 'X', holes: 1.5 })).status, 400)
+  })
 })
 
 describe('GET /api/golf/stats', () => {
-  it('returns stats split by 18-hole and 9-hole', async () => {
+  it('returns stats for 18-hole rounds', async () => {
     const res = await get('/api/golf/stats')
     assert.equal(res.status, 200)
-    const body = await res.json() as { eighteen: Record<string, unknown>; nine: Record<string, unknown> }
-    assert.ok('total_rounds' in body.eighteen)
-    assert.ok('best_score' in body.eighteen)
-    assert.ok('avg_score' in body.eighteen)
-    assert.ok('total_rounds' in body.nine)
-    assert.ok('best_score' in body.nine)
-    assert.ok('avg_score' in body.nine)
+    const body = await res.json() as Record<string, unknown>
+    assert.ok('total_rounds' in body)
+    assert.ok('best_score' in body)
+    assert.ok('avg_score' in body)
   })
 
-  it('counts only same-holes rounds in each bucket', async () => {
+  it('counts only 18-hole rounds', async () => {
+    const before = await (await get('/api/golf/stats')).json() as { total_rounds: number }
     await post('/api/golf/rounds', { course: 'X18', holes: 18, score: 90 })
     await post('/api/golf/rounds', { course: 'X9', holes: 9, score: 45 })
-    const body = await (await get('/api/golf/stats')).json() as {
-      eighteen: { total_rounds: number }
-      nine: { total_rounds: number }
-    }
-    assert.ok(body.eighteen.total_rounds >= 1)
-    assert.ok(body.nine.total_rounds >= 1)
+    await post('/api/golf/rounds', { course: 'Twilight 7', holes: 7, score: 30 })
+    const after = await (await get('/api/golf/stats')).json() as { total_rounds: number }
+    assert.equal(after.total_rounds, before.total_rounds + 1)
   })
 })
 

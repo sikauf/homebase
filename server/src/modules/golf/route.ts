@@ -2,15 +2,14 @@ import { Router, Request, Response } from 'express'
 import db from '../../db/client'
 
 const SELECT_ALL_ROUNDS = db.prepare('SELECT * FROM golf_rounds ORDER BY played_at DESC')
-const STATS_SELECT = `SELECT
+const SELECT_STATS_FULL = db.prepare(`SELECT
     COUNT(*) as total_rounds,
     MIN(score) as best_score,
     ROUND(AVG(score), 1) as avg_score,
     ROUND(AVG(putts), 1) as avg_putts,
     ROUND(AVG(gir), 1) as avg_gir,
     ROUND(AVG(fairways), 1) as avg_fairways
-  FROM golf_rounds WHERE holes = ?`
-const SELECT_STATS = db.prepare(STATS_SELECT)
+  FROM golf_rounds WHERE holes = 18`)
 const SELECT_ROUND = db.prepare('SELECT * FROM golf_rounds WHERE id = ?')
 const INSERT_ROUND = db.prepare(
   `INSERT INTO golf_rounds (course, tees, score, par, fairways, gir, putts, notes, played_at, holes)
@@ -35,10 +34,7 @@ router.get('/rounds', (_req: Request, res: Response) => {
 })
 
 router.get('/stats', (_req: Request, res: Response) => {
-  res.json({
-    eighteen: SELECT_STATS.get(18),
-    nine: SELECT_STATS.get(9),
-  })
+  res.json(SELECT_STATS_FULL.get())
 })
 
 router.post('/rounds', (req: Request, res: Response) => {
@@ -60,8 +56,15 @@ router.post('/rounds', (req: Request, res: Response) => {
     return
   }
 
-  const holesValue = holes === 9 ? 9 : 18
-  const defaultPar = holesValue === 9 ? 36 : 72
+  let holesValue = 18
+  if (holes !== undefined && holes !== null) {
+    if (!Number.isInteger(holes) || holes < 1 || holes > 18) {
+      res.status(400).json({ error: 'holes must be an integer between 1 and 18' })
+      return
+    }
+    holesValue = holes
+  }
+  const defaultPar = holesValue * 4
 
   const result = INSERT_ROUND.run(
     course,
