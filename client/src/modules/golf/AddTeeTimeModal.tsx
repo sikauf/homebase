@@ -28,11 +28,20 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.05em',
 }
 
+function todayIso(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
 export default function AddTeeTimeModal({ onClose, onSubmit }: AddTeeTimeModalProps) {
   const [saving, setSaving] = useState(false)
   const [courseFocused, setCourseFocused] = useState(false)
   const [course, setCourse] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const today = todayIso()
+  const [date, setDate] = useState(today)
 
   const suggestions = useMemo(() => getCourseSuggestions(course), [course])
   const showSuggestions =
@@ -48,6 +57,7 @@ export default function AddTeeTimeModal({ onClose, onSubmit }: AddTeeTimeModalPr
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!course.trim() || !date) return
+    if (date < today) return
     setSaving(true)
     try {
       await onSubmit({ course: course.trim(), date })
@@ -149,6 +159,7 @@ export default function AddTeeTimeModal({ onClose, onSubmit }: AddTeeTimeModalPr
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
+              min={today}
               required
               style={inputStyle}
             />
@@ -167,12 +178,12 @@ export default function AddTeeTimeModal({ onClose, onSubmit }: AddTeeTimeModalPr
             </button>
             <button
               type="submit"
-              disabled={saving || !course.trim() || !date}
+              disabled={saving || !course.trim() || !date || date < today}
               className="flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
               style={{
-                background: saving || !course.trim() || !date ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)',
-                color: saving || !course.trim() || !date ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)',
-                cursor: saving || !course.trim() || !date ? 'not-allowed' : 'pointer',
+                background: saving || !course.trim() || !date || date < today ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)',
+                color: saving || !course.trim() || !date || date < today ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)',
+                cursor: saving || !course.trim() || !date || date < today ? 'not-allowed' : 'pointer',
               }}
             >
               {saving ? 'Saving…' : 'Add Tee Time'}

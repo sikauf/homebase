@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchRounds, fetchStats, createRound, deleteRound } from '../api/golf'
+import { fetchRounds, fetchStats, createRound, updateRound, deleteRound } from '../api/golf'
 import type { GolfRound, GolfStats, CreateRoundPayload } from '../types/golf'
 
 export function useGolf() {
@@ -42,5 +42,13 @@ export function useGolf() {
     [load]
   )
 
-  return { rounds, stats, loading, error, addRound, removeRound, refresh: load }
+  const editRound = useCallback(
+    async (id: number, payload: Partial<CreateRoundPayload>) => {
+      await updateRound(id, payload)
+      await load()
+    },
+    [load]
+  )
+
+  return { rounds, stats, loading, error, addRound, editRound, removeRound, refresh: load }
 }

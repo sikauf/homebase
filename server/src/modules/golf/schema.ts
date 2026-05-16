@@ -48,4 +48,11 @@ export const migrations: Migration[] = [
       db.exec(`ALTER TABLE golf_range_days_new RENAME TO golf_range_days`)
     },
   },
+  {
+    id: 'golf_rounds_birdies_v1',
+    up: (db) => {
+      db.exec(`ALTER TABLE golf_rounds ADD COLUMN birdies INTEGER`)
+      db.exec(`ALTER TABLE golf_rounds DROP COLUMN fairways`)
+    },
+  },
 ]

@@ -68,6 +68,25 @@ describe('POST /api/golf/rounds', () => {
     assert.equal(body.par, 28)
   })
 
+  it('persists birdies on a created round', async () => {
+    const res = await post('/api/golf/rounds', { course: 'Birdie Hunt', score: 70, birdies: 4 })
+    assert.equal(res.status, 201)
+    const body = await res.json() as { birdies: number }
+    assert.equal(body.birdies, 4)
+  })
+
+  it('persists and returns birdies on 9-hole rounds', async () => {
+    const created = await post('/api/golf/rounds', { course: 'Quick Nine', holes: 9, score: 38, birdies: 2 })
+    assert.equal(created.status, 201)
+    const body = await created.json() as { id: number; holes: number; birdies: number }
+    assert.equal(body.holes, 9)
+    assert.equal(body.birdies, 2)
+    const listed = await (await get('/api/golf/rounds')).json() as { id: number; birdies: number }[]
+    const found = listed.find((r) => r.id === body.id)
+    assert.ok(found)
+    assert.equal(found!.birdies, 2)
+  })
+
   it('rejects holes outside 1-18', async () => {
     assert.equal((await post('/api/golf/rounds', { course: 'X', holes: 0 })).status, 400)
     assert.equal((await post('/api/golf/rounds', { course: 'X', holes: 19 })).status, 400)
@@ -103,6 +122,24 @@ describe('PATCH /api/golf/rounds/:id', () => {
     const body = await res.json() as { score: number; course: string }
     assert.equal(body.score, 79)
     assert.equal(body.course, 'Original')
+  })
+
+  it('updates birdies and holes on an existing round', async () => {
+    const { id } = await (await post('/api/golf/rounds', { course: 'Patch Birdies', score: 40, holes: 9 })).json() as { id: number }
+    const res = await patch(`/api/golf/rounds/${id}`, { birdies: 3, holes: 18, score: 78 })
+    assert.equal(res.status, 200)
+    const body = await res.json() as { birdies: number; holes: number; score: number }
+    assert.equal(body.birdies, 3)
+    assert.equal(body.holes, 18)
+    assert.equal(body.score, 78)
+  })
+
+  it('clears an optional field when patched to null', async () => {
+    const { id } = await (await post('/api/golf/rounds', { course: 'Clear Putts', score: 90, putts: 32 })).json() as { id: number }
+    const res = await patch(`/api/golf/rounds/${id}`, { putts: null })
+    assert.equal(res.status, 200)
+    const body = await res.json() as { putts: number | null }
+    assert.equal(body.putts, null)
   })
 
   it('returns 404 for a non-existent round', async () => {
@@ -216,30 +253,44 @@ describe('GET /api/golf/tee-times', () => {
   })
 })
 
+function futureDate(daysFromNow: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + daysFromNow)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+function pastDate(daysAgo: number): string {
+  return futureDate(-daysAgo)
+}
+
 describe('POST /api/golf/tee-times', () => {
   it('creates a tee time and returns it with an id', async () => {
-    const res = await post('/api/golf/tee-times', { course: 'Bergen Point', date: '2026-06-15' })
+    const date = futureDate(30)
+    const res = await post('/api/golf/tee-times', { course: 'Bergen Point', date })
     assert.equal(res.status, 201)
     const body = await res.json() as { id: number; course: string; date: string }
     assert.ok(body.id)
     assert.equal(body.course, 'Bergen Point')
-    assert.equal(body.date, '2026-06-15')
+    assert.equal(body.date, date)
   })
 
   it('trims whitespace from course', async () => {
-    const res = await post('/api/golf/tee-times', { course: '  Lido Beach  ', date: '2026-07-01' })
+    const res = await post('/api/golf/tee-times', { course: '  Lido Beach  ', date: futureDate(45) })
     assert.equal(res.status, 201)
     const body = await res.json() as { course: string }
     assert.equal(body.course, 'Lido Beach')
   })
 
   it('returns 400 when course is missing', async () => {
-    const res = await post('/api/golf/tee-times', { date: '2026-06-15' })
+    const res = await post('/api/golf/tee-times', { date: futureDate(30) })
     assert.equal(res.status, 400)
   })
 
   it('returns 400 when course is empty', async () => {
-    const res = await post('/api/golf/tee-times', { course: '   ', date: '2026-06-15' })
+    const res = await post('/api/golf/tee-times', { course: '   ', date: futureDate(30) })
     assert.equal(res.status, 400)
   })
 
@@ -252,12 +303,22 @@ describe('POST /api/golf/tee-times', () => {
     const res = await post('/api/golf/tee-times', { course: 'Lido Beach', date: '06/15/2026' })
     assert.equal(res.status, 400)
   })
+
+  it('rejects dates in the past', async () => {
+    const res = await post('/api/golf/tee-times', { course: 'Past Course', date: pastDate(1) })
+    assert.equal(res.status, 400)
+  })
+
+  it('accepts today as the date', async () => {
+    const res = await post('/api/golf/tee-times', { course: 'Today Course', date: futureDate(0) })
+    assert.equal(res.status, 201)
+  })
 })
 
 describe('GET /api/golf/tee-times after mutations', () => {
   it('returns tee times sorted by date ascending', async () => {
-    await post('/api/golf/tee-times', { course: 'A', date: '2026-08-01' })
-    await post('/api/golf/tee-times', { course: 'B', date: '2026-05-01' })
+    await post('/api/golf/tee-times', { course: 'A', date: futureDate(120) })
+    await post('/api/golf/tee-times', { course: 'B', date: futureDate(60) })
     const body = await (await get('/api/golf/tee-times')).json() as { date: string }[]
     for (let i = 1; i < body.length; i++) {
       assert.ok(body[i].date >= body[i - 1].date)
@@ -267,7 +328,7 @@ describe('GET /api/golf/tee-times after mutations', () => {
 
 describe('DELETE /api/golf/tee-times/:id', () => {
   it('deletes an existing tee time', async () => {
-    const created = await (await post('/api/golf/tee-times', { course: 'Crab Meadow', date: '2026-09-01' })).json() as { id: number }
+    const created = await (await post('/api/golf/tee-times', { course: 'Crab Meadow', date: futureDate(90) })).json() as { id: number }
     const res = await del(`/api/golf/tee-times/${created.id}`)
     assert.equal(res.status, 204)
   })

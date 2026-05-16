@@ -4,6 +4,7 @@ import { getCourseImage } from './courseImages'
 interface RoundCardProps {
   round: GolfRound
   onDelete: (id: number) => void
+  onEdit: (round: GolfRound) => void
 }
 
 function scoreDiff(score: number | null, par: number): string | null {
@@ -13,9 +14,13 @@ function scoreDiff(score: number | null, par: number): string | null {
   return diff > 0 ? `+${diff}` : `${diff}`
 }
 
-function scoreBadgeStyle(score: number | null, par: number): React.CSSProperties {
+function scoreBadgeStyle(score: number | null, par: number, holes: number): React.CSSProperties {
   if (score == null) return { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }
   const diff = score - par
+  if (holes < 18) {
+    if (diff >= 10) return { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }
+    return { background: 'rgba(74,222,128,0.15)', color: '#4ade80' }
+  }
   if (diff > 14) return { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }
   if (diff >= 8) return { background: 'rgba(250,204,21,0.15)', color: '#facc15' }
   return { background: 'rgba(74,222,128,0.15)', color: '#4ade80' }
@@ -29,9 +34,9 @@ function formatDate(dateStr: string): string {
   })
 }
 
-export default function RoundCard({ round, onDelete }: RoundCardProps) {
+export default function RoundCard({ round, onDelete, onEdit }: RoundCardProps) {
   const diff = scoreDiff(round.score, round.par)
-  const badgeStyle = scoreBadgeStyle(round.score, round.par)
+  const badgeStyle = scoreBadgeStyle(round.score, round.par, round.holes)
   const courseImage = getCourseImage(round.course)
 
   return (
@@ -94,6 +99,18 @@ export default function RoundCard({ round, onDelete }: RoundCardProps) {
             </div>
           )}
           <button
+            onClick={() => onEdit(round)}
+            className="p-1 rounded transition-colors"
+            style={{ color: 'rgba(255,255,255,0.2)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}
+            title="Edit round"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+          <button
             onClick={() => onDelete(round.id)}
             className="p-1 rounded transition-colors"
             style={{ color: 'rgba(255,255,255,0.2)' }}
@@ -108,12 +125,12 @@ export default function RoundCard({ round, onDelete }: RoundCardProps) {
         </div>
       </div>
 
-      {(round.fairways != null || round.gir != null || round.putts != null) && (
+      {(round.birdies != null || round.gir != null || round.putts != null) && (
         <div className="flex gap-4 mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          {round.fairways != null && (
+          {round.birdies != null && (
             <div className="text-center">
-              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>FIR</p>
-              <p className="text-sm font-semibold text-white">{round.fairways}</p>
+              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>Birdies</p>
+              <p className="text-sm font-semibold text-white">{round.birdies}</p>
             </div>
           )}
           {round.gir != null && (

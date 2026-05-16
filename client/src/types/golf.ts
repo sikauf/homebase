@@ -4,7 +4,7 @@ export interface GolfRound {
   tees: string | null
   score: number | null
   par: number
-  fairways: number | null
+  birdies: number | null
   gir: number | null
   putts: number | null
   notes: string | null
@@ -18,18 +18,18 @@ export interface GolfStats {
   avg_score: number | null
   avg_putts: number | null
   avg_gir: number | null
-  avg_fairways: number | null
+  avg_birdies: number | null
 }
 
 export interface CreateRoundPayload {
   course: string
-  tees?: string
-  score?: number
+  tees?: string | null
+  score?: number | null
   par?: number
-  fairways?: number
-  gir?: number
-  putts?: number
-  notes?: string
+  birdies?: number | null
+  gir?: number | null
+  putts?: number | null
+  notes?: string | null
   played_at?: string
   holes?: number
 }

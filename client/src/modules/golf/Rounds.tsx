@@ -7,7 +7,7 @@ import MyrtieTripSection from './MyrtieTripSection'
 import TeeTimesSection from './TeeTimesSection'
 import { useGolf } from '../../hooks/useGolf'
 import { useTeeTimes } from '../../hooks/useTeeTimes'
-import type { GolfRound, GolfStats } from '../../types/golf'
+import type { CreateRoundPayload, GolfRound, GolfStats, TeeTime } from '../../types/golf'
 
 function StatPill({ label, value }: { label: string; value: string | number | null }) {
   return (
@@ -23,11 +23,13 @@ function RoundsGroup({
   rounds,
   stats,
   onDelete,
+  onEdit,
 }: {
   title: string
   rounds: GolfRound[]
   stats?: GolfStats | null
   onDelete: (id: number) => void
+  onEdit: (round: GolfRound) => void
 }) {
   if (rounds.length === 0) return null
   return (
@@ -48,7 +50,7 @@ function RoundsGroup({
       )}
       <div className="space-y-3">
         {rounds.map((round) => (
-          <RoundCard key={round.id} round={round} onDelete={onDelete} />
+          <RoundCard key={round.id} round={round} onDelete={onDelete} onEdit={onEdit} />
         ))}
       </div>
     </div>
@@ -56,13 +58,42 @@ function RoundsGroup({
 }
 
 export default function Rounds() {
-  const { rounds, stats, loading, error, addRound, removeRound } = useGolf()
-  const { teeTimes, addTeeTime } = useTeeTimes()
+  const { rounds, stats, loading, error, addRound, editRound, removeRound } = useGolf()
+  const { teeTimes, addTeeTime, removeTeeTime } = useTeeTimes()
   const [showModal, setShowModal] = useState(false)
   const [showTeeTimeModal, setShowTeeTimeModal] = useState(false)
+  const [pendingTeeTime, setPendingTeeTime] = useState<TeeTime | null>(null)
+  const [editingRound, setEditingRound] = useState<GolfRound | null>(null)
 
   const eighteen = useMemo(() => rounds.filter((r) => r.holes >= 18), [rounds])
   const nine = useMemo(() => rounds.filter((r) => r.holes < 18), [rounds])
+
+  function handleLogRound(teeTime: TeeTime) {
+    setPendingTeeTime(teeTime)
+    setShowModal(true)
+  }
+
+  function handleEditRound(round: GolfRound) {
+    setEditingRound(round)
+    setShowModal(true)
+  }
+
+  async function handleRoundSubmit(payload: CreateRoundPayload) {
+    if (editingRound) {
+      await editRound(editingRound.id, payload)
+    } else {
+      await addRound(payload)
+      if (pendingTeeTime) {
+        await removeTeeTime(pendingTeeTime.id)
+      }
+    }
+  }
+
+  function handleRoundClose() {
+    setShowModal(false)
+    setPendingTeeTime(null)
+    setEditingRound(null)
+  }
 
   return (
     <>
@@ -97,7 +128,11 @@ export default function Rounds() {
 
         {!loading && !error && (
           <>
-            <TeeTimesSection teeTimes={teeTimes} onAdd={() => setShowTeeTimeModal(true)} />
+            <TeeTimesSection
+              teeTimes={teeTimes}
+              onAdd={() => setShowTeeTimeModal(true)}
+              onLogRound={handleLogRound}
+            />
             <MyrtieTripSection />
 
             {rounds.length === 0 ? (
@@ -107,8 +142,8 @@ export default function Rounds() {
               </div>
             ) : (
               <>
-                <RoundsGroup title="18 Holes" rounds={eighteen} stats={stats} onDelete={removeRound} />
-                <RoundsGroup title="9 Holes" rounds={nine} onDelete={removeRound} />
+                <RoundsGroup title="18 Holes" rounds={eighteen} stats={stats} onDelete={removeRound} onEdit={handleEditRound} />
+                <RoundsGroup title="9 Holes" rounds={nine} onDelete={removeRound} onEdit={handleEditRound} />
               </>
             )}
           </>
@@ -117,8 +152,11 @@ export default function Rounds() {
 
       {showModal && (
         <AddRoundModal
-          onClose={() => setShowModal(false)}
-          onSubmit={addRound}
+          onClose={handleRoundClose}
+          onSubmit={handleRoundSubmit}
+          initialCourse={pendingTeeTime?.course}
+          initialDate={pendingTeeTime?.date}
+          editingRound={editingRound ?? undefined}
         />
       )}
 

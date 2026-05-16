@@ -1,10 +1,19 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import type { CreateRoundPayload } from '../../types/golf'
+import type { CreateRoundPayload, GolfRound } from '../../types/golf'
 import { getCourseSuggestions } from './courseImages'
 
 interface AddRoundModalProps {
   onClose: () => void
   onSubmit: (payload: CreateRoundPayload) => Promise<void>
+  initialCourse?: string
+  initialDate?: string
+  editingRound?: GolfRound
+}
+
+function isoDate(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10)
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? new Date().toISOString().split('T')[0] : d.toISOString().split('T')[0]
 }
 
 const inputStyle: React.CSSProperties = {
@@ -28,21 +37,22 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.05em',
 }
 
-export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps) {
+export default function AddRoundModal({ onClose, onSubmit, initialCourse, initialDate, editingRound }: AddRoundModalProps) {
+  const isEditing = editingRound != null
   const [saving, setSaving] = useState(false)
   const [courseFocused, setCourseFocused] = useState(false)
-  const [holes, setHoles] = useState<number>(18)
-  const [parEdited, setParEdited] = useState(false)
+  const [holes, setHoles] = useState<number>(editingRound?.holes ?? 18)
+  const [parEdited, setParEdited] = useState(isEditing)
   const [form, setForm] = useState({
-    course: '',
-    tees: '',
-    score: '',
-    par: '72',
-    fairways: '',
-    gir: '',
-    putts: '',
-    notes: '',
-    played_at: new Date().toISOString().split('T')[0],
+    course: editingRound?.course ?? initialCourse ?? '',
+    tees: editingRound?.tees ?? '',
+    score: editingRound?.score != null ? String(editingRound.score) : '',
+    par: editingRound != null ? String(editingRound.par) : '72',
+    birdies: editingRound?.birdies != null ? String(editingRound.birdies) : '',
+    gir: editingRound?.gir != null ? String(editingRound.gir) : '',
+    putts: editingRound?.putts != null ? String(editingRound.putts) : '',
+    notes: editingRound?.notes ?? '',
+    played_at: editingRound != null ? isoDate(editingRound.played_at) : initialDate ?? new Date().toISOString().split('T')[0],
   })
 
   function setHolesInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -85,15 +95,16 @@ export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps)
     setSaving(true)
     try {
       const holesValue = holes >= 1 && holes <= 18 ? holes : 18
+      const empty = isEditing ? null : undefined
       const payload: CreateRoundPayload = {
         course: form.course.trim(),
-        tees: form.tees || undefined,
-        score: form.score ? Number(form.score) : undefined,
+        tees: form.tees || empty,
+        score: form.score ? Number(form.score) : empty,
         par: form.par ? Number(form.par) : holesValue * 4,
-        fairways: form.fairways ? Number(form.fairways) : undefined,
-        gir: form.gir ? Number(form.gir) : undefined,
-        putts: form.putts ? Number(form.putts) : undefined,
-        notes: form.notes || undefined,
+        birdies: form.birdies ? Number(form.birdies) : empty,
+        gir: form.gir ? Number(form.gir) : empty,
+        putts: form.putts ? Number(form.putts) : empty,
+        notes: form.notes || empty,
         played_at: form.played_at ? `${form.played_at} 12:00:00` : undefined,
         holes: holesValue,
       }
@@ -117,7 +128,7 @@ export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps)
           style={{ zIndex: -1 }}
         />
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-base font-semibold text-white">Log a Round</h2>
+          <h2 className="text-base font-semibold text-white">{isEditing ? 'Edit Round' : 'Log a Round'}</h2>
           <button
             onClick={onClose}
             className="p-1 rounded transition-colors"
@@ -249,8 +260,8 @@ export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps)
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label style={labelStyle}>FIR</label>
-              <input type="number" value={form.fairways} onChange={set('fairways')} placeholder="—" min={0} max={holes || 18} style={inputStyle} />
+              <label style={labelStyle}>Birdies</label>
+              <input type="number" value={form.birdies} onChange={set('birdies')} placeholder="—" min={0} max={holes || 18} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>GIR</label>
@@ -302,7 +313,7 @@ export default function AddRoundModal({ onClose, onSubmit }: AddRoundModalProps)
                 cursor: saving || !form.course.trim() ? 'not-allowed' : 'pointer',
               }}
             >
-              {saving ? 'Saving…' : 'Log Round'}
+              {saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Log Round'}
             </button>
           </div>
         </form>

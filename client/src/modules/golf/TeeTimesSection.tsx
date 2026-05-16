@@ -5,6 +5,7 @@ import { getCourseImage } from './courseImages'
 interface Props {
   teeTimes: TeeTime[]
   onAdd: () => void
+  onLogRound: (teeTime: TeeTime) => void
 }
 
 function startOfToday(): number {
@@ -55,10 +56,19 @@ function CountdownLabel({ diff }: { diff: number }) {
   )
 }
 
-function TeeTimeCard({ teeTime, now }: { teeTime: TeeTime; now: number }) {
+function TeeTimeCard({
+  teeTime,
+  now,
+  onLogRound,
+}: {
+  teeTime: TeeTime
+  now: number
+  onLogRound: (teeTime: TeeTime) => void
+}) {
   const img = getCourseImage(teeTime.course)
   const diff = daysUntil(teeTime.date, now)
   const past = diff < 0
+  const canLog = diff <= 0
 
   return (
     <div
@@ -101,13 +111,26 @@ function TeeTimeCard({ teeTime, now }: { teeTime: TeeTime; now: number }) {
             {formatLongDate(teeTime.date)}
           </p>
         </div>
-        <CountdownLabel diff={diff} />
+        <div className="flex items-center gap-4">
+          <CountdownLabel diff={diff} />
+          {canLog && (
+            <button
+              onClick={() => onLogRound(teeTime)}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors uppercase tracking-wider"
+              style={{ background: 'rgba(74,222,128,0.18)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(74,222,128,0.28)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(74,222,128,0.18)')}
+            >
+              Log Round
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-export default function TeeTimesSection({ teeTimes, onAdd }: Props) {
+export default function TeeTimesSection({ teeTimes, onAdd, onLogRound }: Props) {
   const [now, setNow] = useState(startOfToday())
 
   useEffect(() => {
@@ -147,7 +170,7 @@ export default function TeeTimesSection({ teeTimes, onAdd }: Props) {
       ) : (
         <div className="space-y-2">
           {teeTimes.map((t) => (
-            <TeeTimeCard key={t.id} teeTime={t} now={now} />
+            <TeeTimeCard key={t.id} teeTime={t} now={now} onLogRound={onLogRound} />
           ))}
         </div>
       )}

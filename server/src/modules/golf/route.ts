@@ -8,11 +8,11 @@ const SELECT_STATS_FULL = db.prepare(`SELECT
     ROUND(AVG(score), 1) as avg_score,
     ROUND(AVG(putts), 1) as avg_putts,
     ROUND(AVG(gir), 1) as avg_gir,
-    ROUND(AVG(fairways), 1) as avg_fairways
+    ROUND(AVG(birdies), 1) as avg_birdies
   FROM golf_rounds WHERE holes = 18`)
 const SELECT_ROUND = db.prepare('SELECT * FROM golf_rounds WHERE id = ?')
 const INSERT_ROUND = db.prepare(
-  `INSERT INTO golf_rounds (course, tees, score, par, fairways, gir, putts, notes, played_at, holes)
+  `INSERT INTO golf_rounds (course, tees, score, par, birdies, gir, putts, notes, played_at, holes)
    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 )
 const DELETE_ROUND = db.prepare('DELETE FROM golf_rounds WHERE id = ?')
@@ -38,12 +38,12 @@ router.get('/stats', (_req: Request, res: Response) => {
 })
 
 router.post('/rounds', (req: Request, res: Response) => {
-  const { course, tees, score, par, fairways, gir, putts, notes, played_at, holes } = req.body as {
+  const { course, tees, score, par, birdies, gir, putts, notes, played_at, holes } = req.body as {
     course: string
     tees?: string
     score?: number
     par?: number
-    fairways?: number
+    birdies?: number
     gir?: number
     putts?: number
     notes?: string
@@ -71,7 +71,7 @@ router.post('/rounds', (req: Request, res: Response) => {
     tees ?? null,
     score ?? null,
     par ?? defaultPar,
-    fairways ?? null,
+    birdies ?? null,
     gir ?? null,
     putts ?? null,
     notes ?? null,
@@ -92,7 +92,7 @@ router.patch('/rounds/:id', (req: Request, res: Response) => {
     return
   }
 
-  const allowed = ['course', 'tees', 'score', 'par', 'fairways', 'gir', 'putts', 'notes', 'played_at', 'holes']
+  const allowed = ['course', 'tees', 'score', 'par', 'birdies', 'gir', 'putts', 'notes', 'played_at', 'holes']
   const body = req.body as Record<string, unknown>
   const keys = Object.keys(body).filter((k) => allowed.includes(k))
 
@@ -156,12 +156,23 @@ router.get('/tee-times', (_req: Request, res: Response) => {
   res.json(SELECT_ALL_TEE_TIMES.all())
 })
 
+function todayIso(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
 router.post('/tee-times', (req: Request, res: Response) => {
   const { course, date } = req.body as { course?: string; date?: string }
   const trimmed = course?.trim()
   if (!trimmed) { res.status(400).json({ error: 'course is required' }); return }
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     res.status(400).json({ error: 'date is required and must be YYYY-MM-DD' }); return
+  }
+  if (date < todayIso()) {
+    res.status(400).json({ error: 'date cannot be in the past' }); return
   }
   const result = INSERT_TEE_TIME.run(trimmed, date)
   res.status(201).json(SELECT_TEE_TIME.get(result.lastInsertRowid))
