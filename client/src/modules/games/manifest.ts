@@ -3,6 +3,7 @@ import SlayTheSpire2 from './sts2/Page'
 import HadesII from './hades2/Page'
 import Mewgenics from './mewgenics/Page'
 import MinishootAdventures from './minishoot/Page'
+import ShovelKnight from './shovelknight/Page'
 
 export const manifest: SectionManifest = {
   path: '/games',
@@ -15,6 +16,7 @@ export const manifest: SectionManifest = {
     { label: 'Hades II', path: 'hades2', Page: HadesII },
     { label: 'Mewgenics', path: 'mewgenics', Page: Mewgenics },
     { label: 'Minishoot Adventures', path: 'minishoot', Page: MinishootAdventures },
+    { label: 'Shovel Knight', path: 'shovelknight', Page: ShovelKnight },
   ],
   routesClassName: 'flex-1 flex p-5 bg-black min-h-0',
 }

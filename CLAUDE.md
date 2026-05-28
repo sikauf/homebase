@@ -49,6 +49,7 @@ Adding a tab to an existing section: 1 entry in that section's `manifest.ts` + t
 ## Env vars (root `.env`)
 - `DB_PATH` — SQLite file path (default `data/homebase.db`; tests use `:memory:`)
 - `STS2_SAVE_PATH` — path to Slay the Spire 2 `progress.save`
+- `SHOVEL_KNIGHT_SAVE_PATH` — path to Shovel Knight Treasure Trove Steam Cloud `saveData.bin` (its `uAchievementUnlocked` bit array drives "accomplished" feats; mapping in `server/src/modules/games/shovelknight/accomplishedMap.json`)
 
 ## UI
 

@@ -1,0 +1,422 @@
+{
+"0": {
+"c": "shovel",
+"f": "victory"
+},
+"1": {
+"c": "shovel",
+"f": "music_lover"
+},
+"2": {
+"c": "shovel",
+"f": "master_angler"
+},
+"3": {
+"c": "shovel",
+"f": "decked_out"
+},
+"4": {
+"c": "shovel",
+"f": "relic_roundtable"
+},
+"5": {
+"c": "shovel",
+"f": "i_scream_for_ichor"
+},
+"6": {
+"c": "shovel",
+"f": "nice_hat"
+},
+"7": {
+"c": "shovel",
+"f": "reflect_lord"
+},
+"8": {
+"c": "shovel",
+"f": "again"
+},
+"9": {
+"c": "shovel",
+"f": "hall_champion"
+},
+"10": {
+"c": "shovel",
+"f": "well_met"
+},
+"11": {
+"c": "shovel",
+"f": "halfway"
+},
+"12": {
+"c": "shovel",
+"f": "hey_big_spender"
+},
+"13": {
+"c": "shovel",
+"f": "no_damage"
+},
+"14": {
+"c": "shovel",
+"f": "impossible"
+},
+"15": {
+"c": "shovel",
+"f": "penny_pincher"
+},
+"16": {
+"c": "shovel",
+"f": "perfect_platformer"
+},
+"17": {
+"c": "shovel",
+"f": "checkpointless"
+},
+"18": {
+"c": "shovel",
+"f": "first_purchase"
+},
+"19": {
+"c": "shovel",
+"f": "master_shoveler"
+},
+"20": {
+"c": "shovel",
+"f": "flare_wander"
+},
+"21": {
+"c": "shovel",
+"f": "another_dimension"
+},
+"22": {
+"c": "shovel",
+"f": "super_sphere"
+},
+"23": {
+"c": "shovel",
+"f": "knuckle_down"
+},
+"24": {
+"c": "shovel",
+"f": "reflected_riches"
+},
+"25": {
+"c": "shovel",
+"f": "arc_of_iron"
+},
+"26": {
+"c": "shovel",
+"f": "flying_feat"
+},
+"27": {
+"c": "shovel",
+"f": "boom"
+},
+"28": {
+"c": "shovel",
+"f": "clearing_a_path"
+},
+"29": {
+"c": "shovel",
+"f": "im_alive"
+},
+"30": {
+"c": "shovel",
+"f": "true_shovelry"
+},
+"31": {
+"c": "shovel",
+"f": "hurry_up"
+},
+"32": {
+"c": "shovel",
+"f": "order_of_hoarders"
+},
+"33": {
+"c": "shovel",
+"f": "get_the_point"
+},
+"34": {
+"c": "shovel",
+"f": "untouched"
+},
+"35": {
+"c": "shovel",
+"f": "shovel_economy"
+},
+"36": {
+"c": "shovel",
+"f": "on_a_diet"
+},
+"37": {
+"c": "shovel",
+"f": "sparker"
+},
+"38": {
+"c": "shovel",
+"f": "youre_fired"
+},
+"39": {
+"c": "shovel",
+"f": "pungent"
+},
+"40": {
+"c": "shovel",
+"f": "juggler"
+},
+"41": {
+"c": "shovel",
+"f": "dirt_poor"
+},
+"42": {
+"c": "shovel",
+"f": "hooper"
+},
+"43": {
+"c": "shovel",
+"f": "troupple_acolyte"
+},
+"44": {
+"c": "shovel",
+"f": "only_you"
+},
+"45": {
+"c": "plague",
+"f": "victory"
+},
+"46": {
+"c": "plague",
+"f": "mint_condition"
+},
+"47": {
+"c": "plague",
+"f": "maxed_out"
+},
+"48": {
+"c": "plague",
+"f": "again"
+},
+"49": {
+"c": "plague",
+"f": "hall_villain"
+},
+"50": {
+"c": "plague",
+"f": "no_damage"
+},
+"51": {
+"c": "plague",
+"f": "penny_pincher"
+},
+"52": {
+"c": "plague",
+"f": "naked_plague"
+},
+"53": {
+"c": "plague",
+"f": "hurry_up"
+},
+"54": {
+"c": "plague",
+"f": "checkpointless"
+},
+"55": {
+"c": "plague",
+"f": "untouched"
+},
+"56": {
+"c": "plague",
+"f": "defend_the_lab"
+},
+"57": {
+"c": "plague",
+"f": "trading_up"
+},
+"58": {
+"c": "plague",
+"f": "hang_time"
+},
+"59": {
+"c": "plague",
+"f": "bomb_jump_blitz"
+},
+"60": {
+"c": "plague",
+"f": "poor_oolong"
+},
+"61": {
+"c": "plague",
+"f": "bomb_economy"
+},
+"62": {
+"c": "plague",
+"f": "creep"
+},
+"63": {
+"c": "plague",
+"f": "teetotaler"
+},
+"64": {
+"c": "plague",
+"f": "get_out_of_my_room"
+},
+"65": {
+"c": "specter",
+"f": "victory"
+},
+"66": {
+"c": "specter",
+"f": "skull_seeker"
+},
+"67": {
+"c": "specter",
+"f": "specd_out"
+},
+"68": {
+"c": "specter",
+"f": "again"
+},
+"69": {
+"c": "specter",
+"f": "naked_specter"
+},
+"70": {
+"c": "specter",
+"f": "no_damage"
+},
+"71": {
+"c": "specter",
+"f": "hurry_up"
+},
+"72": {
+"c": "specter",
+"f": "checkpointless"
+},
+"73": {
+"c": "specter",
+"f": "untouched"
+},
+"74": {
+"c": "specter",
+"f": "wisp_whisperer"
+},
+"75": {
+"c": "specter",
+"f": "vector_victor"
+},
+"76": {
+"c": "specter",
+"f": "make_a_killing"
+},
+"77": {
+"c": "specter",
+"f": "inhuman_resources"
+},
+"78": {
+"c": "specter",
+"f": "harvest_of_heights"
+},
+"79": {
+"c": "specter",
+"f": "scythe_economy"
+},
+"80": {
+"c": "specter",
+"f": "get_out_of_my_room"
+},
+"81": {
+"c": "specter",
+"f": "spirit_of_giving"
+},
+"82": {
+"c": "specter",
+"f": "darkslide"
+},
+"83": {
+"c": "specter",
+"f": "curio_conquest"
+},
+"84": {
+"c": "specter",
+"f": "melancholy"
+},
+"85": {
+"c": "king",
+"f": "victory"
+},
+"86": {
+"c": "king",
+"f": "merit_badge"
+},
+"87": {
+"c": "king",
+"f": "decked_out"
+},
+"88": {
+"c": "king",
+"f": "again"
+},
+"89": {
+"c": "king",
+"f": "cartography_king"
+},
+"90": {
+"c": "king",
+"f": "card_completionist"
+},
+"91": {
+"c": "king",
+"f": "house_champ"
+},
+"92": {
+"c": "king",
+"f": "beeline"
+},
+"93": {
+"c": "king",
+"f": "naked_king"
+},
+"94": {
+"c": "king",
+"f": "hurry_up"
+},
+"95": {
+"c": "king",
+"f": "fearless_champ"
+},
+"96": {
+"c": "king",
+"f": "king_of_cards"
+},
+"97": {
+"c": "king",
+"f": "patron_of_the_arts"
+},
+"98": {
+"c": "king",
+"f": "get_out_of_my_room"
+},
+"99": {
+"c": "king",
+"f": "thats_mine"
+},
+"100": {
+"c": "king",
+"f": "im_a_cheater"
+},
+"101": {
+"c": "king",
+"f": "heirlooms_only"
+},
+"102": {
+"c": "king",
+"f": "jump_economy"
+},
+"103": {
+"c": "king",
+"f": "heartless"
+},
+"104": {
+"c": "king",
+"f": "gem_sweep"
+}
+}
