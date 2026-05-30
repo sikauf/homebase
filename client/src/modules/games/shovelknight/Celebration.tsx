@@ -90,17 +90,17 @@ function Sparkles({ rgb, count, radius, delay = 0.1 }: { rgb: string; count: num
   )
 }
 
-function Crest({ character, size }: { character: Character; size: number }) {
+function Crest({ image, rgb, size }: { image: string; rgb: string; size: number }) {
   return (
     <div
       style={{
         position: 'relative', width: size, height: size, borderRadius: '50%', padding: 6,
-        background: `radial-gradient(circle at 50% 35%, rgba(${character.rgb},0.35), rgba(0,0,0,0.6))`,
-        border: `2px solid rgba(${character.rgb},0.85)`,
-        boxShadow: `0 0 30px rgba(${character.rgb},0.7), 0 0 60px rgba(${character.rgb},0.35), inset 0 0 24px rgba(0,0,0,0.7)`,
+        background: `radial-gradient(circle at 50% 35%, rgba(${rgb},0.35), rgba(0,0,0,0.6))`,
+        border: `2px solid rgba(${rgb},0.85)`,
+        boxShadow: `0 0 30px rgba(${rgb},0.7), 0 0 60px rgba(${rgb},0.35), inset 0 0 24px rgba(0,0,0,0.7)`,
       }}
     >
-      <img src={character.image} alt="" draggable={false}
+      <img src={image} alt="" draggable={false}
         style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', imageRendering: 'pixelated' }} />
     </div>
   )
@@ -226,7 +226,7 @@ export default function Celebration({ character, feat, onDone }: Props) {
         }} />
 
         <div className="relative flex flex-col items-center" style={{ width: 'min(92vw, 560px)' }}>
-          <ShatterEmblem image={character.image} rgb={rgb} />
+          <ShatterEmblem image={feat.icon} rgb={rgb} />
 
           <p className="mt-9 uppercase font-semibold" style={{
             fontSize: '0.68rem', letterSpacing: '0.5em', color: `rgba(${rgb},0.95)`, textShadow: `0 0 14px rgba(${rgb},0.7)`,
@@ -287,7 +287,7 @@ export default function Celebration({ character, feat, onDone }: Props) {
             border: `2px solid rgba(${character.rgb},0.7)`, animation: 'sk-ring-pulse 1.4s ease-out infinite',
           }} />
           <div className="relative">
-            <Crest character={character} size={116} />
+            <Crest image={feat.icon} rgb={character.rgb} size={116} />
             <Sparkles rgb={character.rgb} count={14} radius={120} />
           </div>
           <p className="mt-5 uppercase font-semibold" style={{ fontSize: '0.6rem', letterSpacing: '0.45em', color: `rgba(${character.rgb},0.95)`, textShadow: `0 0 12px rgba(${character.rgb},0.7)` }}>

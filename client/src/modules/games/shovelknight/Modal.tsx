@@ -172,7 +172,7 @@ function FeatPlaque({ feat, character, state, hero, onMark }: {
       )}
 
       <div className="relative flex items-center" style={{ gap: hero ? 20 : 14, height: '100%' }}>
-        {claimed && <Emblem image={character.image} rgb={rgb} size={emblemSize} />}
+        {claimed && <Emblem image={feat.icon} rgb={rgb} size={emblemSize} />}
 
         <div className="min-w-0 flex-1">
           <div
