@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { FALLBACK_RGBS, toHardcoverSlug, fetchJSON } from './shared'
+import { FALLBACK_RGBS, fetchJSON } from './shared'
+import JournalModal, { type JournalBook } from './JournalModal'
 
 interface CompletedBook {
+  book_id: number
   title: string
   author: string | null
   cover_url: string | null
@@ -41,21 +43,22 @@ function SkeletonCard() {
   )
 }
 
-function CompletedBookCard({ book, index, hovered, onHover }: {
+function CompletedBookCard({ book, index, hovered, onHover, onOpen }: {
   book: CompletedBook
   index: number
   hovered: boolean
   onHover: (v: boolean) => void
+  onOpen: () => void
 }) {
   const rgb = book.accent_rgb ?? FALLBACK_RGBS[index % FALLBACK_RGBS.length]
   const dateRange = formatDateRange(book.started_at, book.finished_at)
-  const href = `https://hardcover.app/books/${toHardcoverSlug(book.title)}/journals/@sikauf`
 
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
       className="relative rounded-xl overflow-hidden flex flex-col cursor-pointer select-none"
       style={{
         aspectRatio: '2/3',
@@ -173,7 +176,7 @@ function CompletedBookCard({ book, index, hovered, onHover }: {
           </p>
         )}
       </div>
-    </a>
+    </div>
   )
 }
 
@@ -182,6 +185,7 @@ export default function Completed() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const [selected, setSelected] = useState<JournalBook | null>(null)
 
   useEffect(() => {
     fetchJSON<CompletedBook[]>('/api/books/completed')
@@ -265,6 +269,7 @@ export default function Completed() {
                     index={globalIndex}
                     hovered={hoveredIndex === globalIndex}
                     onHover={(v) => setHoveredIndex(v ? globalIndex : null)}
+                    onOpen={() => setSelected(book)}
                   />
                 ))}
               </div>
@@ -272,6 +277,8 @@ export default function Completed() {
           ))
         })()}
       </div>
+
+      {selected && <JournalModal book={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }

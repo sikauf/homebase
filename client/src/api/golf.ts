@@ -1,4 +1,12 @@
-import type { CreateRoundPayload, CreateTeeTimePayload, GolfRound, GolfStats, TeeTime } from '../types/golf'
+import type {
+  CreateRoundPayload,
+  CreateTeeTimePayload,
+  CreateTripPayload,
+  GolfRound,
+  GolfStats,
+  GolfTrip,
+  TeeTime,
+} from '../types/golf'
 
 const BASE = '/api/golf'
 
@@ -58,4 +66,25 @@ export async function createTeeTime(payload: CreateTeeTimePayload): Promise<TeeT
 export async function deleteTeeTime(id: number): Promise<void> {
   const res = await fetch(`${BASE}/tee-times/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to delete tee time')
+}
+
+export async function fetchTrips(): Promise<GolfTrip[]> {
+  const res = await fetch(`${BASE}/trips`)
+  if (!res.ok) throw new Error('Failed to fetch trips')
+  return res.json()
+}
+
+export async function createTrip(payload: CreateTripPayload): Promise<GolfTrip> {
+  const res = await fetch(`${BASE}/trips`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error('Failed to create trip')
+  return res.json()
+}
+
+export async function deleteTrip(id: number): Promise<void> {
+  const res = await fetch(`${BASE}/trips/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete trip')
 }

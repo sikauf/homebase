@@ -373,3 +373,101 @@ describe('GET /api/books/shelf', () => {
     }
   })
 })
+
+describe('GET /api/books/journal/:bookId', () => {
+  it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    delete process.env.HARDCOVER_API_TOKEN
+    const res = await realFetch(`${baseUrl()}/api/books/journal/266084`)
+    assert.equal(res.status, 503)
+    process.env.HARDCOVER_API_TOKEN = orig
+  })
+
+  it('returns 400 for a non-numeric book id', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/journal/not-a-number`)
+      assert.equal(res.status, 400)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+    }
+  })
+
+  it('keeps writing + start/finish markers, drops progress/rated, and normalizes positions', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    // One combined payload: getMyUserId reads me[0].id; the journal query reads
+    // me[0].user_books + reading_journals from the same mocked response.
+    mockHardcover({
+      data: {
+        me: [{
+          id: 85566,
+          user_books: [{ rating: 4, review_raw: '  Loved it  ' }],
+        }],
+        reading_journals: [
+          { event: 'user_book_read_started', entry: null, action_at: '2026-05-14T12:00:00+00:00', metadata: { started_at: '2026-05-14' } },
+          { event: 'note', entry: 'a thought', action_at: '2026-05-14T13:00:00+00:00', metadata: { position: { type: 'pages', value: 40, percent: 29, possible: 134 } } },
+          { event: 'quote', entry: 'a passage', action_at: '2026-05-14T14:00:00+00:00', metadata: { position: { type: 'pages', value: 19, percent: 14, possible: 134 } } },
+          { event: 'progress_updated', entry: null, action_at: '2026-05-14T15:00:00+00:00', metadata: { progress: 30 } },
+          { event: 'rated', entry: null, action_at: '2026-05-15T20:00:00+00:00', metadata: { rating: '4.0' } },
+          { event: 'user_book_read_finished', entry: null, action_at: '2026-05-15T21:00:00+00:00', metadata: { started_at: '2026-05-14', finished_at: '2026-05-15' } },
+        ],
+      },
+    })
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/journal/266084`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as {
+        rating: number | null
+        review: string | null
+        entries: { kind: string; text: string | null; percent: number | null }[]
+      }
+      assert.equal(body.rating, 4)
+      assert.equal(body.review, 'Loved it', 'review_raw should be trimmed')
+      assert.deepEqual(body.entries.map((e) => e.kind), ['started', 'note', 'quote', 'finished'], 'progress_updated and rated are dropped')
+      const note = body.entries[1]
+      assert.equal(note.text, 'a thought')
+      assert.equal(note.percent, 29)
+      assert.equal('page' in note, false, 'page is no longer included')
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('returns empty entries and null review/rating when the book has no journal', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{ id: 85566, user_books: [] }],
+        reading_journals: [],
+      },
+    })
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/journal/999999`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as { rating: number | null; review: string | null; entries: unknown[] }
+      assert.equal(body.rating, null)
+      assert.equal(body.review, null)
+      assert.deepEqual(body.entries, [])
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('returns 502 when Hardcover API returns errors', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({ errors: [{ message: 'Unauthorized' }] })
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/journal/266084`)
+      assert.equal(res.status, 502)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})

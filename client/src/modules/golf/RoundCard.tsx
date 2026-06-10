@@ -34,76 +34,48 @@ function formatDate(dateStr: string): string {
   })
 }
 
+const chipStyle: React.CSSProperties = {
+  background: 'rgba(0,0,0,0.4)',
+  color: 'rgba(255,255,255,0.8)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  backdropFilter: 'blur(2px)',
+}
+
 export default function RoundCard({ round, onDelete, onEdit }: RoundCardProps) {
   const diff = scoreDiff(round.score, round.par)
   const badgeStyle = scoreBadgeStyle(round.score, round.par, round.holes)
   const courseImage = getCourseImage(round.course)
+  const hasStats = round.birdies != null || round.gir != null || round.putts != null
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}>
-      {courseImage && (
-        <div className="relative w-full overflow-hidden" style={{ height: '120px' }}>
+      <div className="relative w-full overflow-hidden" style={{ height: '140px' }}>
+        {courseImage ? (
           <img
             src={courseImage.image}
             alt={round.course}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
             style={{ objectPosition: courseImage.objectPosition ?? '50% 50%' }}
           />
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.0) 40%, rgba(26,26,26,0.85) 100%)' }}
-          />
-        </div>
-      )}
-      <div className="p-5">
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-1">
-            <h3 className="font-semibold text-white truncate">{round.course}</h3>
-            {round.holes !== 18 && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full shrink-0"
-                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)' }}
-              >
-                {round.holes} holes
-              </span>
-            )}
-            {round.tees && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full shrink-0"
-                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)' }}
-              >
-                {round.tees}
-              </span>
-            )}
-          </div>
-          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>{formatDate(round.played_at)}</p>
-        </div>
-        <div className="flex items-center gap-3 ml-4 shrink-0">
-          {round.score != null && (
-            <div className="text-right">
-              <span
-                className="text-2xl font-bold"
-                style={{ color: 'rgba(255,255,255,0.9)', fontFamily: "'Kreon', serif" }}
-              >
-                {round.score}
-              </span>
-              {diff && (
-                <span
-                  className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full"
-                  style={badgeStyle}
-                >
-                  {diff}
-                </span>
-              )}
-            </div>
-          )}
+        ) : (
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #1f1f1f, #141414)' }} />
+        )}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: courseImage
+              ? 'linear-gradient(to right, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.55) 100%)'
+              : 'transparent',
+          }}
+        />
+
+        <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
           <button
             onClick={() => onEdit(round)}
-            className="p-1 rounded transition-colors"
-            style={{ color: 'rgba(255,255,255,0.2)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ color: 'rgba(255,255,255,0.6)', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(0,0,0,0.55)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.background = 'rgba(0,0,0,0.35)' }}
             title="Edit round"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,10 +84,10 @@ export default function RoundCard({ round, onDelete, onEdit }: RoundCardProps) {
           </button>
           <button
             onClick={() => onDelete(round.id)}
-            className="p-1 rounded transition-colors"
-            style={{ color: 'rgba(255,255,255,0.2)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ color: 'rgba(255,255,255,0.6)', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(0,0,0,0.55)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.background = 'rgba(0,0,0,0.35)' }}
             title="Delete round"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,35 +95,94 @@ export default function RoundCard({ round, onDelete, onEdit }: RoundCardProps) {
             </svg>
           </button>
         </div>
+
+        <div className="absolute inset-0 flex items-end p-5">
+          <div className="flex items-end justify-between w-full gap-4 min-w-0">
+            <div className="min-w-0">
+              <h3
+                className="text-white text-xl font-bold leading-tight truncate"
+                style={{ fontFamily: "'Kreon', serif", textShadow: '0 1px 6px rgba(0,0,0,0.7)' }}
+              >
+                {round.course}
+              </h3>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span
+                  className="text-xs uppercase tracking-[.2em]"
+                  style={{ color: 'rgba(255,255,255,0.7)', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
+                >
+                  {formatDate(round.played_at)}
+                </span>
+                {round.holes !== 18 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={chipStyle}>
+                    {round.holes} holes
+                  </span>
+                )}
+                {round.tees && (
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={chipStyle}>
+                    {round.tees}
+                  </span>
+                )}
+              </div>
+            </div>
+            {round.score != null && (
+              <div className="text-right shrink-0">
+                <span
+                  className="text-3xl font-bold leading-none"
+                  style={{
+                    color: '#fff',
+                    fontFamily: "'Kreon', serif",
+                    textShadow: '0 1px 6px rgba(0,0,0,0.7)',
+                  }}
+                >
+                  {round.score}
+                </span>
+                {diff && (
+                  <div className="mt-1.5">
+                    <span
+                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                      style={badgeStyle}
+                    >
+                      {diff}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {(round.birdies != null || round.gir != null || round.putts != null) && (
-        <div className="flex gap-4 mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          {round.birdies != null && (
-            <div className="text-center">
-              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>Birdies</p>
-              <p className="text-sm font-semibold text-white">{round.birdies}</p>
+      {(hasStats || round.notes) && (
+        <div className="px-5 py-4">
+          {hasStats && (
+            <div className="flex gap-6">
+              {round.birdies != null && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>Birdies</p>
+                  <p className="text-sm font-semibold text-white">{round.birdies}</p>
+                </div>
+              )}
+              {round.gir != null && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>GIR</p>
+                  <p className="text-sm font-semibold text-white">{round.gir}</p>
+                </div>
+              )}
+              {round.putts != null && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>Putts</p>
+                  <p className="text-sm font-semibold text-white">{round.putts}</p>
+                </div>
+              )}
             </div>
           )}
-          {round.gir != null && (
-            <div className="text-center">
-              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>GIR</p>
-              <p className="text-sm font-semibold text-white">{round.gir}</p>
-            </div>
-          )}
-          {round.putts != null && (
-            <div className="text-center">
-              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>Putts</p>
-              <p className="text-sm font-semibold text-white">{round.putts}</p>
-            </div>
+          {round.notes && (
+            <p className={`text-sm italic ${hasStats ? 'mt-3' : ''}`} style={{ color: 'rgba(255,255,255,0.35)' }}>
+              "{round.notes}"
+            </p>
           )}
         </div>
       )}
-
-      {round.notes && (
-        <p className="mt-3 text-sm italic" style={{ color: 'rgba(255,255,255,0.35)' }}>"{round.notes}"</p>
-      )}
-      </div>
     </div>
   )
 }

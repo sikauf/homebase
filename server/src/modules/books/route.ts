@@ -69,6 +69,7 @@ const CURRENTLY_READING_QUERY = `{
         }
       }
       book {
+        id
         title
         pages
         image { url }
@@ -83,6 +84,7 @@ const CURRENTLY_READING_QUERY = `{
 interface HardcoverBook {
   user_book_reads: { progress_pages: number; edition: { pages: number } | null }[]
   book: {
+    id: number
     title: string
     pages: number
     image: { url: string } | null
@@ -110,6 +112,7 @@ router.get('/currently-reading', async (_req: Request, res: Response) => {
     const accent_rgb = cover_url ? await getAccentRgb(cover_url) : null
     const currentRead = ub.user_book_reads[0]
     return {
+      book_id: ub.book.id,
       title: ub.book.title,
       author: ub.book.contributions[0]?.author.name ?? null,
       pages: currentRead?.edition?.pages ?? ub.book.pages,
@@ -130,6 +133,7 @@ const COMPLETED_QUERY = `{
         finished_at
       }
       book {
+        id
         title
         image { url }
         contributions {
@@ -143,6 +147,7 @@ const COMPLETED_QUERY = `{
 interface HardcoverCompletedBook {
   user_book_reads: { started_at: string | null; finished_at: string | null }[]
   book: {
+    id: number
     title: string
     image: { url: string } | null
     contributions: { author: { name: string } }[]
@@ -169,6 +174,7 @@ router.get('/completed', async (_req: Request, res: Response) => {
     const accent_rgb = cover_url ? await getAccentRgb(cover_url) : null
     const read = ub.user_book_reads[0]
     return {
+      book_id: ub.book.id,
       title: ub.book.title,
       author: ub.book.contributions[0]?.author.name ?? null,
       cover_url,
@@ -185,6 +191,7 @@ const SHELF_QUERY = `{
   me {
     user_books(where: { status_id: { _eq: 1 } }, order_by: { id: asc }) {
       book {
+        id
         title
         image { url }
         contributions {
@@ -197,6 +204,7 @@ const SHELF_QUERY = `{
 
 interface HardcoverShelfBook {
   book: {
+    id: number
     title: string
     image: { url: string } | null
     contributions: { author: { name: string } }[]
@@ -222,6 +230,7 @@ router.get('/shelf', async (_req: Request, res: Response) => {
     const cover_url = ub.book.image?.url ?? null
     const accent_rgb = cover_url ? await getAccentRgb(cover_url) : null
     return {
+      book_id: ub.book.id,
       title: ub.book.title,
       author: ub.book.contributions[0]?.author.name ?? null,
       cover_url,
@@ -230,6 +239,114 @@ router.get('/shelf', async (_req: Request, res: Response) => {
   }))
 
   res.json(books)
+})
+
+// ---- Journal -------------------------------------------------------------
+// reading_journals isn't reachable through `me`, so we resolve our user id
+// once (it never changes for this single-user app) and reuse it.
+let cachedUserId: { token: string; id: number } | null = null
+
+async function getMyUserId(token: string): Promise<number | null> {
+  if (cachedUserId?.token === token) return cachedUserId.id
+  const data = await hardcoverQuery<{ me: { id: number }[] }>(token, '{ me { id } }')
+  const id = data.data?.me?.[0]?.id
+  if (typeof id !== 'number') return null
+  cachedUserId = { token, id }
+  return id
+}
+
+const journalQuery = (userId: number, bookId: number) => `{
+  me {
+    user_books(where: { book_id: { _eq: ${bookId} } }) {
+      rating
+      review_raw
+    }
+  }
+  reading_journals(
+    where: { user_id: { _eq: ${userId} }, book_id: { _eq: ${bookId} } }
+    order_by: { action_at: asc }
+  ) {
+    event
+    entry
+    action_at
+    metadata
+  }
+}`
+
+interface RawJournal {
+  event: string
+  entry: string | null
+  action_at: string
+  metadata: {
+    position?: { percent?: number }
+    started_at?: string
+    finished_at?: string
+  } | null
+}
+
+// What we send the client. Notes & quotes are "writing"; started/finished are
+// thin markers. progress_updated (redundant — every note carries its position)
+// and standalone rated/reviewed events are dropped: rating/review come from user_books.
+interface JournalEntry {
+  kind: 'note' | 'quote' | 'started' | 'finished'
+  text: string | null
+  percent: number | null
+  date: string
+}
+
+function normalizeEntry(raw: RawJournal): JournalEntry | null {
+  const m = raw.metadata ?? {}
+  switch (raw.event) {
+    case 'note':
+    case 'quote': {
+      const pos = m.position ?? {}
+      return {
+        kind: raw.event,
+        text: raw.entry,
+        percent: typeof pos.percent === 'number' ? pos.percent : null,
+        date: raw.action_at,
+      }
+    }
+    case 'user_book_read_started':
+      return { kind: 'started', text: null, percent: null, date: m.started_at ?? raw.action_at }
+    case 'user_book_read_finished':
+      return { kind: 'finished', text: null, percent: null, date: m.finished_at ?? raw.action_at }
+    default:
+      return null
+  }
+}
+
+router.get('/journal/:bookId', async (req: Request, res: Response) => {
+  const token = process.env.HARDCOVER_API_TOKEN
+  if (!token) { res.status(503).json({ error: 'HARDCOVER_API_TOKEN not configured' }); return }
+
+  const bookId = Number(req.params.bookId)
+  if (!Number.isInteger(bookId) || bookId <= 0) { res.status(400).json({ error: 'Invalid book id' }); return }
+
+  let data: {
+    data?: {
+      me?: { user_books: { rating: number | null; review_raw: string | null }[] }[]
+      reading_journals?: RawJournal[]
+    }
+    errors?: { message: string }[]
+  }
+  try {
+    const userId = await getMyUserId(token)
+    if (userId == null) { res.status(502).json({ error: 'Unexpected response from Hardcover API' }); return }
+    data = await hardcoverQuery(token, journalQuery(userId, bookId))
+  } catch {
+    res.status(503).json({ error: 'Failed to reach Hardcover API' }); return
+  }
+
+  if (data.errors?.length) { res.status(502).json({ error: data.errors[0].message }); return }
+
+  const userBook = data.data?.me?.[0]?.user_books?.[0]
+  const review = userBook?.review_raw?.trim() || null
+  const entries = (data.data?.reading_journals ?? [])
+    .map(normalizeEntry)
+    .filter((e): e is JournalEntry => e !== null)
+
+  res.json({ rating: userBook?.rating ?? null, review, entries })
 })
 
 export default router

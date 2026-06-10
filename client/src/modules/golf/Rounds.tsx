@@ -3,7 +3,6 @@ import PageWrapper from '../../components/layout/PageWrapper'
 import RoundCard from './RoundCard'
 import AddRoundModal from './AddRoundModal'
 import AddTeeTimeModal from './AddTeeTimeModal'
-import MyrtieTripSection from './MyrtieTripSection'
 import TeeTimesSection from './TeeTimesSection'
 import { useGolf } from '../../hooks/useGolf'
 import { useTeeTimes } from '../../hooks/useTeeTimes'
@@ -133,7 +132,6 @@ export default function Rounds() {
               onAdd={() => setShowTeeTimeModal(true)}
               onLogRound={handleLogRound}
             />
-            <MyrtieTripSection />
 
             {rounds.length === 0 ? (
               <div className="text-center py-20">

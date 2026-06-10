@@ -65,8 +65,13 @@ function usePressHold(duration: number, onComplete: () => void) {
   return { progress, begin, cancel }
 }
 
-function Emblem({ image, rgb, size }: { image: string; rgb: string; size: number }) {
-  const radius = Math.round(size * 0.09)
+// regular feat icons are mostly decorative frame around a small central symbol;
+// zooming past the frame lets the actual art fill the emblem. Grand feats already
+// fill their frame, so they render unzoomed.
+const ICON_ZOOM = 1.7
+
+function Emblem({ image, rgb, size, zoom = 1 }: { image: string; rgb: string; size: number; zoom?: number }) {
+  const radius = Math.round(size * 0.12)
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <div
@@ -77,15 +82,14 @@ function Emblem({ image, rgb, size }: { image: string; rgb: string; size: number
           filter: 'blur(3px)', animation: 'sk-glow-pulse 3s ease-in-out infinite',
         }}
       />
-      <img
-        src={image} alt="" draggable={false}
-        className="relative w-full h-full"
-        style={{ objectFit: 'cover', borderRadius: radius, imageRendering: 'pixelated', filter: `drop-shadow(0 0 5px rgba(${rgb},0.7)) saturate(1.15)` }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ borderRadius: radius, border: `1px solid rgba(${rgb},0.7)`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12)' }}
-      />
+      {/* clip wrapper so the zoom crops into the icon; glow above stays outside it */}
+      <div className="relative w-full h-full overflow-hidden" style={{ borderRadius: radius }}>
+        <img
+          src={image} alt="" draggable={false}
+          className="w-full h-full"
+          style={{ objectFit: 'contain', imageRendering: 'pixelated', transform: `scale(${zoom})`, filter: `saturate(1.15)` }}
+        />
+      </div>
     </div>
   )
 }
@@ -115,7 +119,7 @@ function FeatPlaque({ feat, character, state, hero, onMark }: {
   const { progress, begin, cancel } = usePressHold(HOLD_MS, onMark)
   const charging = unclaimed && progress > 0
 
-  const emblemSize = hero ? 76 : 52
+  const emblemSize = hero ? 76 : 64
   const titleSize = hero ? '1.5rem' : '0.95rem'
   const descSize = hero ? '0.82rem' : '0.72rem'
 
@@ -172,7 +176,7 @@ function FeatPlaque({ feat, character, state, hero, onMark }: {
       )}
 
       <div className="relative flex items-center" style={{ gap: hero ? 20 : 14, height: '100%' }}>
-        {claimed && <Emblem image={feat.icon} rgb={rgb} size={emblemSize} />}
+        {claimed && <Emblem image={feat.icon} rgb={rgb} size={emblemSize} zoom={hero ? 1 : ICON_ZOOM} />}
 
         <div className="min-w-0 flex-1">
           <div

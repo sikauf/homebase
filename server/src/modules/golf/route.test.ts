@@ -338,3 +338,77 @@ describe('DELETE /api/golf/tee-times/:id', () => {
     assert.equal(res.status, 404)
   })
 })
+
+describe('GET /api/golf/trips', () => {
+  it('includes the seeded Myrtle Beach trip with parsed courses array', async () => {
+    const body = await (await get('/api/golf/trips')).json() as { name: string; courses: string[] }[]
+    const myrtle = body.find((t) => t.name === 'Myrtle Beach')
+    assert.ok(myrtle, 'Myrtle Beach trip should be seeded by migration')
+    assert.deepEqual([...myrtle!.courses].sort(), ["Man O' War", 'Glen Dornoch', 'South Creek'].sort())
+  })
+})
+
+describe('POST /api/golf/trips', () => {
+  it('creates a trip with courses and returns the parsed array', async () => {
+    const res = await post('/api/golf/trips', {
+      name: 'Pinehurst Spring',
+      location: 'North Carolina',
+      start_date: '2026-09-01',
+      end_date: '2026-09-04',
+      courses: ['No. 2', 'No. 4'],
+    })
+    assert.equal(res.status, 201)
+    const body = await res.json() as { id: number; name: string; courses: string[] }
+    assert.ok(body.id)
+    assert.equal(body.name, 'Pinehurst Spring')
+    assert.deepEqual(body.courses, ['No. 2', 'No. 4'])
+  })
+
+  it('accepts an empty courses array', async () => {
+    const res = await post('/api/golf/trips', {
+      name: 'Empty Trip',
+      start_date: '2026-10-01',
+      end_date: '2026-10-02',
+      courses: [],
+    })
+    assert.equal(res.status, 201)
+    const body = await res.json() as { courses: string[] }
+    assert.deepEqual(body.courses, [])
+  })
+
+  it('returns 400 when name is missing', async () => {
+    assert.equal((await post('/api/golf/trips', { start_date: '2026-09-01', end_date: '2026-09-04' })).status, 400)
+  })
+
+  it('returns 400 when dates are missing or malformed', async () => {
+    assert.equal((await post('/api/golf/trips', { name: 'X', end_date: '2026-09-04' })).status, 400)
+    assert.equal((await post('/api/golf/trips', { name: 'X', start_date: '2026-09-01' })).status, 400)
+    assert.equal((await post('/api/golf/trips', { name: 'X', start_date: 'bad', end_date: '2026-09-04' })).status, 400)
+  })
+
+  it('returns 400 when end_date is before start_date', async () => {
+    const res = await post('/api/golf/trips', {
+      name: 'Backwards',
+      start_date: '2026-09-04',
+      end_date: '2026-09-01',
+    })
+    assert.equal(res.status, 400)
+  })
+})
+
+describe('DELETE /api/golf/trips/:id', () => {
+  it('deletes an existing trip', async () => {
+    const created = await (await post('/api/golf/trips', {
+      name: 'To Delete',
+      start_date: '2026-11-01',
+      end_date: '2026-11-02',
+      courses: [],
+    })).json() as { id: number }
+    const res = await del(`/api/golf/trips/${created.id}`)
+    assert.equal(res.status, 204)
+  })
+
+  it('returns 404 for a non-existent id', async () => {
+    assert.equal((await del('/api/golf/trips/999999')).status, 404)
+  })
+})

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { FALLBACK_RGBS, toHardcoverSlug, fetchJSON } from './shared'
+import { FALLBACK_RGBS, fetchJSON } from './shared'
+import JournalModal, { type JournalBook } from './JournalModal'
 
 interface Book {
+  book_id: number
   title: string
   author: string | null
   pages: number
@@ -22,19 +24,18 @@ function SkeletonCard() {
   )
 }
 
-function BookCard({ book, index, hovered, onHover }: {
+function BookCard({ book, index, hovered, onHover, onOpen }: {
   book: Book
   index: number
   hovered: boolean
   onHover: (v: boolean) => void
+  onOpen: () => void
 }) {
   const rgb = book.accent_rgb ?? FALLBACK_RGBS[index % FALLBACK_RGBS.length]
   const slot = { rgb }
   const pct = book.progress_pages != null && book.pages > 0
     ? Math.min((book.progress_pages / book.pages) * 100, 100)
     : null
-
-  const href = `https://hardcover.app/books/${toHardcoverSlug(book.title)}/journals/@sikauf`
 
   const STRINGS = [
     { h: 13, o: 0.55, x: 5  },
@@ -45,10 +46,11 @@ function BookCard({ book, index, hovered, onHover }: {
   ]
 
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
       className="relative rounded-xl overflow-hidden flex flex-col cursor-pointer select-none"
       style={{
         background: '#0e0e0f',
@@ -260,7 +262,7 @@ function BookCard({ book, index, hovered, onHover }: {
           )}
         </div>
       </div>
-    </a>
+    </div>
   )
 }
 
@@ -269,6 +271,7 @@ export default function CurrentlyReading() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const [selected, setSelected] = useState<JournalBook | null>(null)
 
   useEffect(() => {
     fetchJSON<Book[]>('/api/books/currently-reading')
@@ -332,10 +335,13 @@ export default function CurrentlyReading() {
               index={i}
               hovered={hoveredIndex === i}
               onHover={(v) => setHoveredIndex(v ? i : null)}
+              onOpen={() => setSelected(book)}
             />
           ))}
         </div>
       </div>
+
+      {selected && <JournalModal book={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }

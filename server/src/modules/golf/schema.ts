@@ -55,4 +55,23 @@ export const migrations: Migration[] = [
       db.exec(`ALTER TABLE golf_rounds DROP COLUMN fairways`)
     },
   },
+  {
+    id: 'golf_trips_v1',
+    up: (db) => {
+      db.exec(`CREATE TABLE IF NOT EXISTS golf_trips (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        name       TEXT NOT NULL,
+        location   TEXT,
+        start_date TEXT NOT NULL,
+        end_date   TEXT NOT NULL,
+        courses    TEXT NOT NULL DEFAULT '[]'
+      )`)
+      const existing = db.prepare(`SELECT id FROM golf_trips WHERE name = ? AND start_date = ?`).get('Myrtle Beach', '2026-04-15')
+      if (!existing) {
+        db.prepare(
+          `INSERT INTO golf_trips (name, location, start_date, end_date, courses) VALUES (?, ?, ?, ?, ?)`
+        ).run('Myrtle Beach', 'South Carolina', '2026-04-15', '2026-04-17', JSON.stringify(['South Creek', 'Glen Dornoch', "Man O' War"]))
+      }
+    },
+  },
 ]

@@ -90,18 +90,21 @@ function Sparkles({ rgb, count, radius, delay = 0.1 }: { rgb: string; count: num
   )
 }
 
+// matches the modal: zoom past the decorative frame so the symbol fills the crest.
+const ICON_ZOOM = 1.7
+
 function Crest({ image, rgb, size }: { image: string; rgb: string; size: number }) {
   return (
     <div
       style={{
-        position: 'relative', width: size, height: size, borderRadius: '50%', padding: 6,
+        position: 'relative', width: size, height: size, borderRadius: '50%', padding: 6, overflow: 'hidden',
         background: `radial-gradient(circle at 50% 35%, rgba(${rgb},0.35), rgba(0,0,0,0.6))`,
         border: `2px solid rgba(${rgb},0.85)`,
         boxShadow: `0 0 30px rgba(${rgb},0.7), 0 0 60px rgba(${rgb},0.35), inset 0 0 24px rgba(0,0,0,0.7)`,
       }}
     >
       <img src={image} alt="" draggable={false}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', imageRendering: 'pixelated' }} />
+        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', imageRendering: 'pixelated', transform: `scale(${ICON_ZOOM})` }} />
     </div>
   )
 }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { FALLBACK_RGBS, toHardcoverSlug, fetchJSON } from './shared'
+import { FALLBACK_RGBS, fetchJSON } from './shared'
+import JournalModal, { type JournalBook } from './JournalModal'
 
 interface ShelfBook {
+  book_id: number
   title: string
   author: string | null
   cover_url: string | null
@@ -21,20 +23,21 @@ function SkeletonCard() {
   )
 }
 
-function ShelfBookCard({ book, index, hovered, onHover }: {
+function ShelfBookCard({ book, index, hovered, onHover, onOpen }: {
   book: ShelfBook
   index: number
   hovered: boolean
   onHover: (v: boolean) => void
+  onOpen: () => void
 }) {
   const rgb = book.accent_rgb ?? FALLBACK_RGBS[index % FALLBACK_RGBS.length]
-  const href = `https://hardcover.app/books/${toHardcoverSlug(book.title)}`
 
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
       className="relative rounded-xl overflow-hidden flex flex-col cursor-pointer select-none"
       style={{
         aspectRatio: '2/3',
@@ -143,7 +146,7 @@ function ShelfBookCard({ book, index, hovered, onHover }: {
           </p>
         )}
       </div>
-    </a>
+    </div>
   )
 }
 
@@ -152,6 +155,7 @@ export default function Shelf() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const [selected, setSelected] = useState<JournalBook | null>(null)
 
   useEffect(() => {
     fetchJSON<ShelfBook[]>('/api/books/shelf')
@@ -220,11 +224,14 @@ export default function Shelf() {
                 index={i}
                 hovered={hoveredIndex === i}
                 onHover={(v) => setHoveredIndex(v ? i : null)}
+                onOpen={() => setSelected(book)}
               />
             ))}
           </div>
         )}
       </div>
+
+      {selected && <JournalModal book={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }

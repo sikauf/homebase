@@ -49,12 +49,15 @@ export default function ShovelKnight() {
 
   return (
     <GamePageShell title="Feats">
+      <style>{`@keyframes sk-ready-pip { 0%,100% { opacity: 0.5; transform: scale(1) } 50% { opacity: 1; transform: scale(1.35) } }`}</style>
       <div className="flex-1 px-5 pb-5 grid grid-cols-4 gap-4 min-h-0">
         {CHARACTERS.map((c) => {
           const done = completed.get(c.id)?.size ?? 0
           const total = c.feats.length
           const pct = Math.round((done / total) * 100)
           const all = total > 0 && done === total
+          const claimedSet = completed.get(c.id)
+          const readyCount = [...(accomplished.get(c.id) ?? [])].filter((id) => !claimedSet?.has(id)).length
           const isHovered = hoveredId === c.id
           const lit = isHovered || all
 
@@ -158,14 +161,26 @@ export default function ShovelKnight() {
                 </div>
               </div>
 
-              {all && (
+              {all ? (
                 <div
                   className="absolute top-3 right-3 uppercase font-bold rounded px-1.5 py-0.5"
                   style={{ fontSize: '0.48rem', letterSpacing: '0.12em', color: '#0c0c0c', background: `rgba(${c.rgb},0.95)`, boxShadow: `0 0 12px rgba(${c.rgb},0.6)` }}
                 >
                   ✦ Complete
                 </div>
-              )}
+              ) : readyCount > 0 ? (
+                <div
+                  className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full pointer-events-none"
+                  style={{ padding: '2px 7px 2px 6px', background: 'rgba(0,0,0,0.5)', border: `1px solid rgba(${c.rgb},0.45)` }}
+                >
+                  <span
+                    style={{ width: 6, height: 6, borderRadius: '50%', background: `rgba(${c.rgb},0.95)`, boxShadow: `0 0 6px rgba(${c.rgb},0.9)`, animation: 'sk-ready-pip 2.4s ease-in-out infinite' }}
+                  />
+                  <span className="uppercase font-semibold tabular-nums" style={{ fontSize: '0.46rem', letterSpacing: '0.1em', color: `rgba(${c.rgb},0.95)` }}>
+                    {readyCount} ready
+                  </span>
+                </div>
+              ) : null}
               </button>
             </div>
           )

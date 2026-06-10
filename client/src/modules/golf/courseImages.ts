@@ -45,7 +45,8 @@ const COURSES: CourseImage[] = [
   },
   {
     name: 'Town of Oyster Bay',
-    image: '/golf/courses/town_of_oyster_bay.jpeg',
+    image: '/golf/courses/town_of_oyster_bay.jpg',
+    objectPosition: '50% 35%',
     aliases: ['TOBAY', 'TOBAY Golf Course', 'Oyster Bay'],
   },
   {
@@ -61,6 +62,7 @@ const COURSES: CourseImage[] = [
   {
     name: 'Cantiague Park',
     image: '/golf/courses/cantiague.jpg',
+    objectPosition: '50% 30%',
     aliases: ['Cantiague', 'Cantiague Park Golf Course'],
   },
   {

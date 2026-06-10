@@ -27,6 +27,29 @@ const SELECT_TEE_TIME = db.prepare('SELECT id, course, date FROM golf_tee_times 
 const INSERT_TEE_TIME = db.prepare('INSERT INTO golf_tee_times (course, date) VALUES (?, ?)')
 const DELETE_TEE_TIME = db.prepare('DELETE FROM golf_tee_times WHERE id = ?')
 
+const SELECT_ALL_TRIPS = db.prepare('SELECT id, name, location, start_date, end_date, courses FROM golf_trips ORDER BY start_date DESC, id DESC')
+const SELECT_TRIP = db.prepare('SELECT id, name, location, start_date, end_date, courses FROM golf_trips WHERE id = ?')
+const INSERT_TRIP = db.prepare('INSERT INTO golf_trips (name, location, start_date, end_date, courses) VALUES (?, ?, ?, ?, ?)')
+const DELETE_TRIP = db.prepare('DELETE FROM golf_trips WHERE id = ?')
+
+interface TripRow {
+  id: number
+  name: string
+  location: string | null
+  start_date: string
+  end_date: string
+  courses: string
+}
+
+function shapeTrip(row: TripRow) {
+  let parsed: string[] = []
+  try {
+    const v = JSON.parse(row.courses)
+    if (Array.isArray(v)) parsed = v.filter((x): x is string => typeof x === 'string')
+  } catch { /* fall through with empty array */ }
+  return { ...row, courses: parsed }
+}
+
 const router = Router()
 
 router.get('/rounds', (_req: Request, res: Response) => {
@@ -182,6 +205,43 @@ router.delete('/tee-times/:id', (req: Request, res: Response) => {
   const id = Number(req.params.id)
   const result = DELETE_TEE_TIME.run(id)
   if (result.changes === 0) { res.status(404).json({ error: 'Tee time not found' }); return }
+  res.status(204).end()
+})
+
+router.get('/trips', (_req: Request, res: Response) => {
+  const rows = SELECT_ALL_TRIPS.all() as TripRow[]
+  res.json(rows.map(shapeTrip))
+})
+
+router.post('/trips', (req: Request, res: Response) => {
+  const { name, location, start_date, end_date, courses } = req.body as {
+    name?: string
+    location?: string
+    start_date?: string
+    end_date?: string
+    courses?: unknown
+  }
+  const trimmedName = name?.trim()
+  if (!trimmedName) { res.status(400).json({ error: 'name is required' }); return }
+  if (!start_date || !/^\d{4}-\d{2}-\d{2}$/.test(start_date)) {
+    res.status(400).json({ error: 'start_date is required and must be YYYY-MM-DD' }); return
+  }
+  if (!end_date || !/^\d{4}-\d{2}-\d{2}$/.test(end_date)) {
+    res.status(400).json({ error: 'end_date is required and must be YYYY-MM-DD' }); return
+  }
+  if (end_date < start_date) {
+    res.status(400).json({ error: 'end_date cannot be before start_date' }); return
+  }
+  const courseList = Array.isArray(courses) ? courses.filter((c): c is string => typeof c === 'string' && c.trim().length > 0).map((c) => c.trim()) : []
+  const result = INSERT_TRIP.run(trimmedName, location?.trim() || null, start_date, end_date, JSON.stringify(courseList))
+  const row = SELECT_TRIP.get(result.lastInsertRowid) as TripRow
+  res.status(201).json(shapeTrip(row))
+})
+
+router.delete('/trips/:id', (req: Request, res: Response) => {
+  const id = Number(req.params.id)
+  const result = DELETE_TRIP.run(id)
+  if (result.changes === 0) { res.status(404).json({ error: 'Trip not found' }); return }
   res.status(204).end()
 })
 

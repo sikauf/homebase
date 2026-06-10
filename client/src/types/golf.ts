@@ -44,3 +44,20 @@ export interface CreateTeeTimePayload {
   course: string
   date: string
 }
+
+export interface GolfTrip {
+  id: number
+  name: string
+  location: string | null
+  start_date: string
+  end_date: string
+  courses: string[]
+}
+
+export interface CreateTripPayload {
+  name: string
+  location?: string
+  start_date: string
+  end_date: string
+  courses: string[]
+}

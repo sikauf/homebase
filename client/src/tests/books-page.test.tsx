@@ -4,6 +4,7 @@ import BooksPage from '../modules/books/CurrentlyReading'
 
 const MOCK_BOOKS = [
   {
+    book_id: 1,
     title: 'Iron Gold',
     author: 'Pierce Brown',
     pages: 624,
@@ -12,6 +13,7 @@ const MOCK_BOOKS = [
     accent_rgb: '233,124,22',
   },
   {
+    book_id: 2,
     title: 'Demon Copperhead',
     author: 'Barbara Kingsolver',
     pages: 560,
@@ -26,6 +28,17 @@ function mockFetch(data: unknown, ok = true) {
     ok,
     status: ok ? 200 : 503,
     text: () => Promise.resolve(JSON.stringify(data)),
+  }))
+}
+
+// URL-aware mock: the book list endpoints return `books`, while the per-book
+// journal endpoint returns the journal payload the modal expects.
+function mockListAndJournal(books: unknown) {
+  vi.stubGlobal('fetch', vi.fn((url: unknown) => {
+    const payload = String(url).includes('/journal/')
+      ? { rating: null, review: null, entries: [] }
+      : books
+    return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(JSON.stringify(payload)) })
   }))
 }
 
@@ -145,7 +158,7 @@ describe('BookCard bookmark', () => {
     await waitFor(() => screen.getByText('Iron Gold'))
 
     // Iron Gold has progress — ribbon should have a non-trivial height %
-    const ironGoldCard = screen.getByText('Iron Gold').closest('a') as HTMLElement
+    const ironGoldCard = screen.getByText('Iron Gold').closest('[role="button"]') as HTMLElement
     const ribbons = ironGoldCard.querySelectorAll('[style*="polygon"]')
     expect(ribbons.length).toBeGreaterThan(0)
   })
@@ -155,7 +168,7 @@ describe('BookCard bookmark', () => {
     render(<BooksPage />)
     await waitFor(() => screen.getByText('Iron Gold'))
 
-    const ironGoldCard = screen.getByText('Iron Gold').closest('a') as HTMLElement
+    const ironGoldCard = screen.getByText('Iron Gold').closest('[role="button"]') as HTMLElement
     // Strings are 1.5px wide divs inside the bookmark container — there are 5
     const strings = Array.from(ironGoldCard.querySelectorAll('div')).filter(
       (el) => el.style.width === '1.5px'
@@ -168,7 +181,7 @@ describe('BookCard bookmark', () => {
     render(<BooksPage />)
     await waitFor(() => screen.getByText('Demon Copperhead'))
 
-    const demonCard = screen.getByText('Demon Copperhead').closest('a') as HTMLElement
+    const demonCard = screen.getByText('Demon Copperhead').closest('[role="button"]') as HTMLElement
     const strings = Array.from(demonCard.querySelectorAll('div')).filter(
       (el) => el.style.width === '1.5px'
     )
@@ -180,13 +193,13 @@ describe('BookCard bookmark', () => {
     render(<BooksPage />)
     await waitFor(() => screen.getByText('Iron Gold'))
 
-    const ironGoldCard = screen.getByText('Iron Gold').closest('a') as HTMLElement
+    const ironGoldCard = screen.getByText('Iron Gold').closest('[role="button"]') as HTMLElement
     const holes = Array.from(ironGoldCard.querySelectorAll('div')).filter(
       (el) => el.style.borderRadius === '50%'
     )
     expect(holes.length).toBeGreaterThan(0)
 
-    const demonCard = screen.getByText('Demon Copperhead').closest('a') as HTMLElement
+    const demonCard = screen.getByText('Demon Copperhead').closest('[role="button"]') as HTMLElement
     const demonHoles = Array.from(demonCard.querySelectorAll('div')).filter(
       (el) => el.style.borderRadius === '50%'
     )
@@ -194,20 +207,23 @@ describe('BookCard bookmark', () => {
   })
 })
 
-describe('BookCard links', () => {
-  it('each card links to the Hardcover journal URL in a new tab', async () => {
-    mockFetch(MOCK_BOOKS)
+describe('BookCard opens the journal', () => {
+  it('clicking a card opens the journal modal with an Open in Hardcover link in a new tab', async () => {
+    mockListAndJournal(MOCK_BOOKS)
     render(<BooksPage />)
     await waitFor(() => screen.getByText('Iron Gold'))
 
-    const ironGoldLink = screen.getByText('Iron Gold').closest('a') as HTMLAnchorElement
-    expect(ironGoldLink.href).toBe('https://hardcover.app/books/iron-gold/journals/@sikauf')
-    expect(ironGoldLink.target).toBe('_blank')
-    expect(ironGoldLink.rel).toContain('noopener')
+    fireEvent.click(screen.getByText('Iron Gold'))
+
+    const link = await screen.findByRole('link', { name: /Open in Hardcover/i }) as HTMLAnchorElement
+    expect(link.href).toBe('https://hardcover.app/books/iron-gold/journals/@sikauf')
+    expect(link.target).toBe('_blank')
+    expect(link.rel).toContain('noopener')
   })
 
-  it('slugifies titles with apostrophes correctly', async () => {
-    mockFetch([{
+  it('builds the Hardcover link from a slugified title', async () => {
+    mockListAndJournal([{
+      book_id: 9,
       title: "Carl's Doomsday Scenario",
       author: 'Matt Dinniman',
       pages: 385,
@@ -218,7 +234,18 @@ describe('BookCard links', () => {
     render(<BooksPage />)
     await waitFor(() => screen.getByText("Carl's Doomsday Scenario"))
 
-    const link = screen.getByText("Carl's Doomsday Scenario").closest('a') as HTMLAnchorElement
+    fireEvent.click(screen.getByText("Carl's Doomsday Scenario"))
+
+    const link = await screen.findByRole('link', { name: /Open in Hardcover/i }) as HTMLAnchorElement
     expect(link.href).toBe('https://hardcover.app/books/carls-doomsday-scenario/journals/@sikauf')
+  })
+
+  it('shows the empty state for a book with no journal entries', async () => {
+    mockListAndJournal(MOCK_BOOKS)
+    render(<BooksPage />)
+    await waitFor(() => screen.getByText('Iron Gold'))
+
+    fireEvent.click(screen.getByText('Iron Gold'))
+    await waitFor(() => expect(screen.getByText('No journal entries yet.')).toBeInTheDocument())
   })
 })
