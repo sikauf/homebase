@@ -4,8 +4,6 @@ import HadesII from './hades2/Page'
 import Mewgenics from './mewgenics/Page'
 import MinishootAdventures from './minishoot/Page'
 import ShovelKnight from './shovelknight/Page'
-import AgeOfEmpiresII from './aoe2/Page'
-
 export const manifest: SectionManifest = {
   path: '/games',
   label: 'Games',
@@ -18,7 +16,6 @@ export const manifest: SectionManifest = {
     { label: 'Mewgenics', path: 'mewgenics', Page: Mewgenics },
     { label: 'Minishoot Adventures', path: 'minishoot', Page: MinishootAdventures },
     { label: 'Shovel Knight', path: 'shovelknight', Page: ShovelKnight },
-    { label: 'Age of Empires II', path: 'aoe2', Page: AgeOfEmpiresII },
   ],
   routesClassName: 'flex-1 flex p-5 bg-black min-h-0',
 }
