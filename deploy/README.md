@@ -47,6 +47,7 @@ fly apps restart sam-homebase
 
 - Deploy code changes: `npm run deploy`
 - Push game saves: `npm run push-saves`
+- Pull prod data down to the local dev DB: `npm run pull-db` (backs up local first; full replace)
 - Logs: `fly logs -a sam-homebase`
 
 The machine auto-stops when idle (`min_machines_running = 0`), so the first

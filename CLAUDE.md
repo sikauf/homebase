@@ -59,6 +59,7 @@ Adding a tab to an existing section: 1 entry in that section's `manifest.ts` + t
 The app is deployed on Fly.io (`Dockerfile` + `fly.toml`, SQLite on a volume at `/data`) so it's reachable from a phone; setup + first-deploy steps in `deploy/README.md`.
 - `npm run deploy` — `fly deploy` (builds the Docker image remotely, rolls the machine).
 - `npm run push-saves` — pushes the local Steam save files to prod (`POST /api/games/{sts2,shovelknight}/save`). On the VM the save-path env vars are unset, so those tabs serve the last pushed snapshot and show a "From save synced …" timestamp (`X-Save-Synced-At` header).
+- `npm run pull-db` — replaces the local DB with prod's (prod is the source of truth for data entry; local is for development). Backs up the local file first; full replace, not a merge.
 - In production Express also serves `client/dist` with an SPA fallback; there's no separate static host.
 - When doing the Books "For You" flow (below) against prod, hit `HOMEBASE_URL` with `Authorization: Bearer <AUTH_PASSWORD>` instead of localhost.
 

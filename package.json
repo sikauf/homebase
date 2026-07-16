@@ -11,6 +11,7 @@
     "build": "npm run build --workspace=client && npm run build --workspace=server",
     "test": "npm test -w client && npm test -w server",
     "push-saves": "node scripts/push-saves.mjs",
+    "pull-db": "scripts/pull-db.sh",
     "deploy": "fly deploy"
   },
   "devDependencies": {
