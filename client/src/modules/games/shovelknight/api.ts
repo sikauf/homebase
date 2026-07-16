@@ -22,10 +22,12 @@ export async function markFeat(character_id: string, feat_id: string): Promise<v
 
 // Feats accomplished in-game (from the Steam save), keyed by character id.
 // Returns {} when the save isn't configured/readable — nothing is claimable then.
+// syncedAt is set when the data comes from a pushed snapshot rather than a
+// live save-file read (i.e. the server runs remotely).
 export type Accomplished = Record<string, string[]>
 
-export async function fetchAccomplished(): Promise<Accomplished> {
+export async function fetchAccomplished(): Promise<{ accomplished: Accomplished; syncedAt: string | null }> {
   const res = await fetch('/api/games/shovelknight/accomplished')
-  if (!res.ok) return {}
-  return res.json()
+  if (!res.ok) return { accomplished: {}, syncedAt: null }
+  return { accomplished: await res.json(), syncedAt: res.headers.get('X-Save-Synced-At') }
 }

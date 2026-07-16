@@ -10,6 +10,7 @@ const PIXEL = "'Silkscreen', 'Courier New', monospace"
 export default function ShovelKnight() {
   const [completed, setCompleted] = useState<Map<string, Set<string>>>(new Map())
   const [accomplished, setAccomplished] = useState<Map<string, Set<string>>>(new Map())
+  const [syncedAt, setSyncedAt] = useState<string | null>(null)
   const [open, setOpen] = useState<Character | null>(null)
   const [celebration, setCelebration] = useState<{ character: Character; feat: Feat } | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -29,8 +30,9 @@ export default function ShovelKnight() {
     fetchAccomplished()
       .then((data) => {
         const map = new Map<string, Set<string>>()
-        for (const [charId, featIds] of Object.entries(data)) map.set(charId, new Set(featIds))
+        for (const [charId, featIds] of Object.entries(data.accomplished)) map.set(charId, new Set(featIds))
         setAccomplished(map)
+        setSyncedAt(data.syncedAt)
       })
       .catch((e) => console.error('Failed to load accomplished feats:', e))
   }, [])
@@ -50,6 +52,11 @@ export default function ShovelKnight() {
   return (
     <GamePageShell title="Feats">
       <style>{`@keyframes sk-ready-pip { 0%,100% { opacity: 0.5; transform: scale(1) } 50% { opacity: 1; transform: scale(1.35) } }`}</style>
+      {syncedAt && (
+        <p className="px-5 pb-2 text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          From save synced {new Date(syncedAt).toLocaleString()}
+        </p>
+      )}
       <div className="flex-1 px-5 pb-5 grid grid-cols-4 gap-4 min-h-0">
         {CHARACTERS.map((c) => {
           const done = completed.get(c.id)?.size ?? 0

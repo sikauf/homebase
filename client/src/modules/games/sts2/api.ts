@@ -8,13 +8,15 @@ export interface CharacterAscension {
   a10_completed: boolean
 }
 
-export async function fetchAscensions(): Promise<CharacterAscension[]> {
+// syncedAt is set when the data comes from a pushed snapshot rather than a
+// live save-file read (i.e. the server runs remotely).
+export async function fetchAscensions(): Promise<{ characters: CharacterAscension[]; syncedAt: string | null }> {
   const res = await fetch('/api/games/sts2/ascensions')
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText })) as { error: string }
     throw new Error(err.error)
   }
-  return res.json()
+  return { characters: await res.json(), syncedAt: res.headers.get('X-Save-Synced-At') }
 }
 
 export async function setA10Completed(characterId: string, completed: boolean): Promise<void> {

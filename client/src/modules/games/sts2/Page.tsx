@@ -91,6 +91,7 @@ function SkeletonCard() {
 
 export default function SlayTheSpire2() {
   const [characters, setCharacters] = useState<CharacterAscension[]>([])
+  const [syncedAt, setSyncedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -98,7 +99,7 @@ export default function SlayTheSpire2() {
   useEffect(() => {
     setLoading(true)
     fetchAscensions()
-      .then((data) => { setCharacters(data); setError(null) })
+      .then((data) => { setCharacters(data.characters); setSyncedAt(data.syncedAt); setError(null) })
       .catch((e) => setError(String(e.message ?? e)))
       .finally(() => setLoading(false))
   }, [])
@@ -113,6 +114,11 @@ export default function SlayTheSpire2() {
 
   return (
     <GamePageShell title="Ascension Progress">
+      {syncedAt && (
+        <p className="px-5 pb-2 text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          From save synced {new Date(syncedAt).toLocaleString()}
+        </p>
+      )}
       <div className="flex-1 px-5 pb-5 grid grid-cols-5 gap-3 min-h-0">
         {loading && Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
 

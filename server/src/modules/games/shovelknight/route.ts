@@ -12,19 +12,9 @@ const CHARACTER_SET = new Set<string>(CHARACTERS)
 // index in the save's `uAchievementUnlocked` array -> { character, feat } it represents.
 const ACCOMPLISHED_MAP = accomplishedMap as Record<string, { c: CharacterId; f: string }>
 
-function readAccomplished():
+function parseAccomplished(raw: string):
   | { ok: true; accomplished: Record<CharacterId, string[]> }
   | { ok: false; status: number; error: string } {
-  const savePath = process.env.SHOVEL_KNIGHT_SAVE_PATH
-  if (!savePath) return { ok: false, status: 503, error: 'SHOVEL_KNIGHT_SAVE_PATH not configured' }
-
-  let raw: string
-  try {
-    raw = fs.readFileSync(savePath, 'utf-8')
-  } catch {
-    return { ok: false, status: 503, error: 'Could not read Shovel Knight save file' }
-  }
-
   const match = raw.match(/uAchievementUnlocked=([0-9 ]+)/)
   if (!match) return { ok: false, status: 500, error: 'No achievement data in save file' }
   const flags = match[1].trim().split(/\s+/)
@@ -34,6 +24,33 @@ function readAccomplished():
     if (flags[Number(idx)] === '1') accomplished[entry.c].push(entry.f)
   }
   return { ok: true, accomplished }
+}
+
+const SELECT_SNAPSHOT = db.prepare('SELECT payload, updated_at FROM shovelknight_save_snapshot WHERE id = 1')
+const UPSERT_SNAPSHOT = db.prepare(`INSERT INTO shovelknight_save_snapshot (id, payload, updated_at) VALUES (1, ?, ?)
+  ON CONFLICT (id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`)
+
+// Live save file when SHOVEL_KNIGHT_SAVE_PATH is set (running on the Mac);
+// otherwise the last snapshot pushed via POST /save (running remotely).
+function readAccomplished():
+  | { ok: true; accomplished: Record<CharacterId, string[]>; syncedAt: string | null }
+  | { ok: false; status: number; error: string } {
+  const savePath = process.env.SHOVEL_KNIGHT_SAVE_PATH
+  if (savePath) {
+    let raw: string
+    try {
+      raw = fs.readFileSync(savePath, 'utf-8')
+    } catch {
+      return { ok: false, status: 503, error: 'Could not read Shovel Knight save file' }
+    }
+    const parsed = parseAccomplished(raw)
+    return parsed.ok ? { ...parsed, syncedAt: null } : parsed
+  }
+
+  const row = SELECT_SNAPSHOT.get() as { payload: string; updated_at: string } | undefined
+  if (!row) return { ok: false, status: 503, error: 'Shovel Knight save not configured and no snapshot pushed' }
+  const parsed = parseAccomplished(row.payload)
+  return parsed.ok ? { ...parsed, syncedAt: row.updated_at } : parsed
 }
 
 const SELECT_FEATS = db.prepare(
@@ -76,7 +93,25 @@ router.get('/accomplished', (_req: Request, res: Response) => {
     res.status(result.status).json({ error: result.error })
     return
   }
+  if (result.syncedAt) res.setHeader('X-Save-Synced-At', result.syncedAt)
   res.json(result.accomplished)
+})
+
+// Snapshot push from the Mac (scripts/push-saves.mjs): raw save file, base64.
+router.post('/save', (req: Request, res: Response) => {
+  const { data } = (req.body ?? {}) as { data?: unknown }
+  if (typeof data !== 'string' || !data) {
+    res.status(400).json({ error: 'data (base64 save file) is required' })
+    return
+  }
+  const raw = Buffer.from(data, 'base64').toString('utf-8')
+  const parsed = parseAccomplished(raw)
+  if (!parsed.ok) {
+    res.status(400).json({ error: 'Not a valid Shovel Knight save file' })
+    return
+  }
+  UPSERT_SNAPSHOT.run(raw, new Date().toISOString())
+  res.status(201).json({ ok: true })
 })
 
 export default router

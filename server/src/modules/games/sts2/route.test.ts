@@ -174,3 +174,58 @@ describe('DELETE /api/games/sts2/a10/:character_id', () => {
     assert.equal(list.find((c) => c.id === 'CHARACTER.REGENT')!.a10_completed, true)
   })
 })
+
+describe('save snapshots (POST /api/games/sts2/save)', () => {
+  const pushSave = (data: unknown) =>
+    fetch(`${base}/api/games/sts2/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    })
+
+  it('returns 503 when the path is unset and no snapshot has been pushed', async () => {
+    const orig = process.env.STS2_SAVE_PATH
+    delete process.env.STS2_SAVE_PATH
+    const res = await fetch(`${base}/api/games/sts2/ascensions`)
+    assert.equal(res.status, 503)
+    process.env.STS2_SAVE_PATH = orig
+  })
+
+  it('rejects a missing payload', async () => {
+    assert.equal((await pushSave(undefined)).status, 400)
+  })
+
+  it('rejects a payload that is not a valid save file', async () => {
+    const res = await pushSave(Buffer.from('not json').toString('base64'))
+    assert.equal(res.status, 400)
+  })
+
+  it('stores a snapshot that /ascensions serves when the path is unset', async () => {
+    const push = await pushSave(Buffer.from(JSON.stringify(MOCK_SAVE)).toString('base64'))
+    assert.equal(push.status, 201)
+
+    const orig = process.env.STS2_SAVE_PATH
+    delete process.env.STS2_SAVE_PATH
+    const res = await fetch(`${base}/api/games/sts2/ascensions`)
+    assert.equal(res.status, 200)
+    assert.ok(res.headers.get('x-save-synced-at'))
+    const body = await res.json() as { id: string; max_ascension: number }[]
+    assert.equal(body.length, 5)
+    assert.equal(body.find((c) => c.id === 'CHARACTER.DEFECT')!.max_ascension, 8)
+    process.env.STS2_SAVE_PATH = orig
+  })
+
+  it('does not set the synced header for live file reads', async () => {
+    const res = await fetch(`${base}/api/games/sts2/ascensions`)
+    assert.equal(res.status, 200)
+    assert.equal(res.headers.get('x-save-synced-at'), null)
+  })
+
+  it('validates POST /a10 against the snapshot when the path is unset', async () => {
+    const orig = process.env.STS2_SAVE_PATH
+    delete process.env.STS2_SAVE_PATH
+    const res = await fetch(`${base}/api/games/sts2/a10/CHARACTER.IRONCLAD`, { method: 'POST' })
+    assert.equal(res.status, 201)
+    process.env.STS2_SAVE_PATH = orig
+  })
+})

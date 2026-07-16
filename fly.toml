@@ -1,0 +1,25 @@
+# Fly.io config — deploy with `npm run deploy` (fly deploy).
+# Secrets (fly secrets set): AUTH_PASSWORD, HARDCOVER_API_TOKEN, YOUTUBE_API_KEY.
+# STS2_SAVE_PATH / SHOVEL_KNIGHT_SAVE_PATH stay unset so the game tabs serve
+# snapshots pushed from the Mac via `npm run push-saves`.
+app = "sam-homebase"
+primary_region = "ewr"
+
+[env]
+  PORT = "3001"
+  DB_PATH = "/data/homebase.db"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "homebase_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

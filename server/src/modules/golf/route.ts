@@ -209,7 +209,7 @@ router.delete('/tee-times/:id', (req: Request, res: Response) => {
 })
 
 router.get('/trips', (_req: Request, res: Response) => {
-  const rows = SELECT_ALL_TRIPS.all() as TripRow[]
+  const rows = SELECT_ALL_TRIPS.all() as unknown as TripRow[]
   res.json(rows.map(shapeTrip))
 })
 
@@ -234,7 +234,7 @@ router.post('/trips', (req: Request, res: Response) => {
   }
   const courseList = Array.isArray(courses) ? courses.filter((c): c is string => typeof c === 'string' && c.trim().length > 0).map((c) => c.trim()) : []
   const result = INSERT_TRIP.run(trimmedName, location?.trim() || null, start_date, end_date, JSON.stringify(courseList))
-  const row = SELECT_TRIP.get(result.lastInsertRowid) as TripRow
+  const row = SELECT_TRIP.get(result.lastInsertRowid) as unknown as TripRow
   res.status(201).json(shapeTrip(row))
 })
 

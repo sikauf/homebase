@@ -119,3 +119,48 @@ describe('GET /api/games/shovelknight/accomplished', () => {
     assert.equal((await get()).status, 500)
   })
 })
+
+describe('save snapshots (POST /api/games/shovelknight/save)', () => {
+  const pushSave = (data: unknown) =>
+    fetch(`${baseUrl()}/api/games/shovelknight/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    })
+  const getAccomplished = () => fetch(`${baseUrl()}/api/games/shovelknight/accomplished`)
+
+  it('returns 503 when the path is unset and no snapshot has been pushed', async () => {
+    delete process.env.SHOVEL_KNIGHT_SAVE_PATH
+    assert.equal((await getAccomplished()).status, 503)
+  })
+
+  it('rejects a missing payload', async () => {
+    assert.equal((await pushSave(undefined)).status, 400)
+  })
+
+  it('rejects a payload without achievement data', async () => {
+    const res = await pushSave(Buffer.from('YCFS=1\nuSaveID=1\n').toString('base64'))
+    assert.equal(res.status, 400)
+  })
+
+  it('stores a snapshot that /accomplished serves when the path is unset', async () => {
+    delete process.env.SHOVEL_KNIGHT_SAVE_PATH
+    const push = await pushSave(Buffer.from(saveWith([1, ...Array(137).fill(0)])).toString('base64'))
+    assert.equal(push.status, 201)
+
+    const res = await getAccomplished()
+    assert.equal(res.status, 200)
+    assert.ok(res.headers.get('x-save-synced-at'))
+    const body = await res.json() as Record<string, string[]>
+    assert.deepEqual(body.shovel, ['victory'])
+  })
+
+  it('prefers the live file (no synced header) when the path is set', async () => {
+    process.env.SHOVEL_KNIGHT_SAVE_PATH = fx.zero
+    const res = await getAccomplished()
+    assert.equal(res.status, 200)
+    assert.equal(res.headers.get('x-save-synced-at'), null)
+    assert.deepEqual(await res.json(), { shovel: [], plague: [], specter: [], king: [] })
+    delete process.env.SHOVEL_KNIGHT_SAVE_PATH
+  })
+})
