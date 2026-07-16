@@ -8,8 +8,8 @@ export function toHardcoverSlug(title: string): string {
     .replace(/^-|-$/g, '')
 }
 
-export async function fetchJSON<T>(url: string): Promise<T> {
-  const r = await fetch(url)
+export async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(url, init)
   const text = await r.text()
   const json = JSON.parse(text)
   if (!r.ok) throw new Error(json.error ?? `Server error ${r.status}`)

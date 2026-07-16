@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FALLBACK_RGBS, fetchJSON } from './shared'
 import JournalModal, { type JournalBook } from './JournalModal'
+import ScreeningRoomModal, { type ScreeningBook, type VideoResult } from './ScreeningRoomModal'
 
 interface CompletedBook {
   book_id: number
@@ -180,12 +181,21 @@ function CompletedBookCard({ book, index, hovered, onHover, onOpen }: {
   )
 }
 
+interface ScreeningState {
+  book: ScreeningBook
+  videos: VideoResult[]
+}
+
 export default function Completed() {
   const [books, setBooks] = useState<CompletedBook[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const [selected, setSelected] = useState<JournalBook | null>(null)
+  const [screening, setScreening] = useState<ScreeningState | null>(null)
+  const [screeningLoading, setScreeningLoading] = useState(false)
+  // Books already shown this session, so "Another book" keeps moving forward.
+  const seenBookIds = useRef<number[]>([])
 
   useEffect(() => {
     fetchJSON<CompletedBook[]>('/api/books/completed')
@@ -193,6 +203,55 @@ export default function Completed() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
+
+  const buildQuery = (exclude: number[]) =>
+    exclude.length ? `?exclude_book_ids=${exclude.join(',')}` : ''
+
+  // Picks a fresh book, accumulating exclusions. `keepExcluded` is the current
+  // book to never re-pick when the session pool is exhausted and we reset.
+  async function pickBook(keepExcluded: number | null) {
+    setScreeningLoading(true)
+    try {
+      const result = await fetchJSON<ScreeningState>(`/api/books/screening${buildQuery(seenBookIds.current)}`)
+      seenBookIds.current = [...seenBookIds.current, result.book.book_id]
+      setScreening(result)
+    } catch {
+      // Seen everything available — start the session over, but never hand back
+      // the book currently on screen.
+      seenBookIds.current = keepExcluded != null ? [keepExcluded] : []
+      try {
+        const result = await fetchJSON<ScreeningState>(`/api/books/screening${buildQuery(seenBookIds.current)}`)
+        seenBookIds.current = [...seenBookIds.current, result.book.book_id]
+        setScreening(result)
+      } catch { /* genuinely nothing to show — leave current view as-is */ }
+    } finally {
+      setScreeningLoading(false)
+    }
+  }
+
+  function openScreening() {
+    seenBookIds.current = []
+    setScreening(null)
+    pickBook(null)
+  }
+
+  async function handleDismissVideo(videoId: string) {
+    // Fire-and-forget; the dismissal is best-effort persistence.
+    fetch('/api/books/videos/dismiss', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ video_id: videoId }),
+    }).catch(() => { /* best-effort */ })
+
+    if (!screening) return
+    const remaining = screening.videos.filter((v) => v.video_id !== videoId)
+    if (remaining.length) {
+      setScreening({ ...screening, videos: remaining })
+    } else {
+      // Last clip for this book dismissed — move on to another book.
+      pickBook(screening.book.book_id)
+    }
+  }
 
   return (
     <div className="flex-1 flex p-5 min-h-0 overflow-y-auto" style={{ background: '#0c0c0c' }}>
@@ -220,6 +279,30 @@ export default function Completed() {
                 <div className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }} />
                 <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }} />
               </div>
+              {!loading && books.length > 0 && (
+                <div className="flex justify-center mt-4">
+                  <button
+                    onClick={openScreening}
+                    disabled={screeningLoading}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#fff' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
+                    style={{
+                      fontSize: '0.76rem',
+                      letterSpacing: '0.1em',
+                      padding: '7px 18px',
+                      borderRadius: 999,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      color: 'rgba(255,255,255,0.7)',
+                      cursor: screeningLoading ? 'default' : 'pointer',
+                      opacity: screeningLoading ? 0.5 : 1,
+                      transition: 'background 0.15s ease, color 0.15s ease',
+                    }}
+                  >
+                    {screeningLoading && !screening ? '…' : '🎬 Screening Room'}
+                  </button>
+                </div>
+              )}
             </div>
             <div className="h-px flex-1" style={{ background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.12))' }} />
           </div>
@@ -279,6 +362,18 @@ export default function Completed() {
       </div>
 
       {selected && <JournalModal book={selected} onClose={() => setSelected(null)} />}
+
+      {screening && (
+        <ScreeningRoomModal
+          key={screening.book.book_id}
+          book={screening.book}
+          videos={screening.videos}
+          loading={screeningLoading}
+          onAnotherBook={() => pickBook(screening.book.book_id)}
+          onDismissVideo={handleDismissVideo}
+          onClose={() => setScreening(null)}
+        />
+      )}
     </div>
   )
 }

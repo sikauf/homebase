@@ -1,17 +1,52 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { setupTestServer } from '../../shared/test-helpers'
+import { clearBooksCache } from './route'
 
 const baseUrl = setupTestServer()
 const realFetch = globalThis.fetch
 
 function mockHardcover(payload: unknown) {
+  clearBooksCache()
   globalThis.fetch = async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
     if (url.toString().includes('hardcover.app')) {
       return { json: async () => payload } as Response
     }
     return realFetch(url, init)
   }
+}
+
+function mockApis(hardcoverPayload: unknown, youtubePayload: unknown) {
+  clearBooksCache()
+  globalThis.fetch = async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    const urlStr = url.toString()
+    if (urlStr.includes('hardcover.app')) return { json: async () => hardcoverPayload } as Response
+    if (urlStr.includes('googleapis.com/youtube')) return { json: async () => youtubePayload } as Response
+    return realFetch(url, init)
+  }
+}
+
+const COMPLETED_BOOK_MOCK = {
+  data: {
+    me: [{
+      user_books: [{
+        id: 999,
+        user_book_reads: [{ started_at: '2024-01-05', finished_at: '2024-02-12' }],
+        book: { id: 42, title: 'Test Book', image: null, contributions: [{ author: { name: 'Test Author' } }] },
+      }],
+    }],
+  },
+}
+
+const YOUTUBE_RESULTS_MOCK = {
+  items: [{
+    id: { videoId: 'abc123' },
+    snippet: {
+      title: 'Test Book - Full Analysis',
+      channelTitle: 'BookTube',
+      thumbnails: { medium: { url: 'https://img.youtube.com/vi/abc123/mqdefault.jpg' } },
+    },
+  }],
 }
 
 describe('GET /api/books/profile', () => {
@@ -465,6 +500,455 @@ describe('GET /api/books/journal/:bookId', () => {
     try {
       const res = await realFetch(`${baseUrl()}/api/books/journal/266084`)
       assert.equal(res.status, 502)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})
+
+describe('GET /api/books/screening', () => {
+  it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    delete process.env.HARDCOVER_API_TOKEN
+    const res = await realFetch(`${baseUrl()}/api/books/screening`)
+    assert.equal(res.status, 503)
+    process.env.HARDCOVER_API_TOKEN = orig
+  })
+
+  it('returns 503 when YOUTUBE_API_KEY is not set', async () => {
+    const origHc = process.env.HARDCOVER_API_TOKEN
+    const origYt = process.env.YOUTUBE_API_KEY
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    delete process.env.YOUTUBE_API_KEY
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/screening`)
+      assert.equal(res.status, 503)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = origHc
+      process.env.YOUTUBE_API_KEY = origYt
+    }
+  })
+
+  it('returns book and videos when both keys are set', async () => {
+    const origHc = process.env.HARDCOVER_API_TOKEN
+    const origYt = process.env.YOUTUBE_API_KEY
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    process.env.YOUTUBE_API_KEY = 'yt-key'
+    mockApis(COMPLETED_BOOK_MOCK, YOUTUBE_RESULTS_MOCK)
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/screening`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as { book: Record<string, unknown>; videos: Record<string, unknown>[] }
+      assert.equal(body.book.title, 'Test Book')
+      assert.equal(body.book.author, 'Test Author')
+      assert.equal(body.videos.length, 1)
+      assert.equal(body.videos[0].video_id, 'abc123')
+      assert.equal(body.videos[0].channel, 'BookTube')
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = origHc
+      process.env.YOUTUBE_API_KEY = origYt
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('uses SQLite cache and skips YouTube on second call for same book', async () => {
+    const origHc = process.env.HARDCOVER_API_TOKEN
+    const origYt = process.env.YOUTUBE_API_KEY
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    process.env.YOUTUBE_API_KEY = 'yt-key'
+    mockApis(COMPLETED_BOOK_MOCK, YOUTUBE_RESULTS_MOCK)
+    try {
+      await realFetch(`${baseUrl()}/api/books/screening`)
+      // Now replace YouTube mock with one that would fail if called
+      let youtubeCalled = false
+      globalThis.fetch = async (url) => {
+        if (url.toString().includes('googleapis.com/youtube')) { youtubeCalled = true }
+        if (url.toString().includes('hardcover.app')) return { json: async () => COMPLETED_BOOK_MOCK } as Response
+        return realFetch(url)
+      }
+      const res = await realFetch(`${baseUrl()}/api/books/screening`)
+      assert.equal(res.status, 200)
+      assert.equal(youtubeCalled, false, 'YouTube API should not be called when videos are cached')
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = origHc
+      process.env.YOUTUBE_API_KEY = origYt
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('returns 404 when all books are excluded', async () => {
+    const origHc = process.env.HARDCOVER_API_TOKEN
+    const origYt = process.env.YOUTUBE_API_KEY
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    process.env.YOUTUBE_API_KEY = 'yt-key'
+    mockApis(COMPLETED_BOOK_MOCK, YOUTUBE_RESULTS_MOCK)
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/screening?exclude_book_ids=42`)
+      assert.equal(res.status, 404)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = origHc
+      process.env.YOUTUBE_API_KEY = origYt
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('filters out dismissed videos from cached results', async () => {
+    const origHc = process.env.HARDCOVER_API_TOKEN
+    const origYt = process.env.YOUTUBE_API_KEY
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    process.env.YOUTUBE_API_KEY = 'yt-key'
+    mockApis(COMPLETED_BOOK_MOCK, YOUTUBE_RESULTS_MOCK)
+    try {
+      // First call populates cache with abc123
+      await realFetch(`${baseUrl()}/api/books/screening`)
+      // Dismiss the only video
+      await realFetch(`${baseUrl()}/api/books/videos/dismiss`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_id: 'abc123' }),
+      })
+      // Now screening should find no undismissed videos
+      const res = await realFetch(`${baseUrl()}/api/books/screening`)
+      assert.equal(res.status, 404)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = origHc
+      process.env.YOUTUBE_API_KEY = origYt
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('trims reading dates from the book payload', async () => {
+    const origHc = process.env.HARDCOVER_API_TOKEN
+    const origYt = process.env.YOUTUBE_API_KEY
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    process.env.YOUTUBE_API_KEY = 'yt-key'
+    // Fresh book id (77) and video id so prior tests' dismissals don't interfere.
+    const freshBook = {
+      data: {
+        me: [{
+          user_books: [{
+            user_book_reads: [{ started_at: '2024-03-01', finished_at: '2024-03-20' }],
+            book: { id: 77, title: 'Trim Book', image: null, contributions: [{ author: { name: 'Author' } }] },
+          }],
+        }],
+      },
+    }
+    const freshVideo = { items: [{ id: { videoId: 'trim-vid' }, snippet: { title: 'T', channelTitle: 'C', thumbnails: {} } }] }
+    mockApis(freshBook, freshVideo)
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/screening`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as { book: Record<string, unknown> }
+      assert.deepEqual(
+        Object.keys(body.book).sort(),
+        ['accent_rgb', 'author', 'book_id', 'cover_url', 'title'],
+        'screening book payload should not leak started_at/finished_at',
+      )
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = origHc
+      process.env.YOUTUBE_API_KEY = origYt
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('skips books with no videos and returns one that has them', async () => {
+    const origHc = process.env.HARDCOVER_API_TOKEN
+    const origYt = process.env.YOUTUBE_API_KEY
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    process.env.YOUTUBE_API_KEY = 'yt-key'
+
+    const twoBooks = {
+      data: {
+        me: [{
+          user_books: [
+            { user_book_reads: [{ started_at: '2024-01-01', finished_at: '2024-01-10' }], book: { id: 101, title: 'Empty Book', image: null, contributions: [] } },
+            { user_book_reads: [{ started_at: '2024-02-01', finished_at: '2024-02-10' }], book: { id: 102, title: 'Good Book', image: null, contributions: [{ author: { name: 'Author' } }] } },
+          ],
+        }],
+      },
+    }
+    // Fresh, undismissed video id for the book that does have results.
+    const goodVideo = { items: [{ id: { videoId: 'good-vid' }, snippet: { title: 'Deep dive', channelTitle: 'BookTube', thumbnails: {} } }] }
+    // YouTube returns results only for the "Good Book" query; "Empty Book" gets nothing.
+    clearBooksCache()
+    globalThis.fetch = async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const urlStr = url.toString()
+      if (urlStr.includes('hardcover.app')) return { json: async () => twoBooks } as Response
+      if (urlStr.includes('googleapis.com/youtube')) {
+        const hasGood = urlStr.includes(encodeURIComponent('"Good Book"'))
+        return { json: async () => (hasGood ? goodVideo : { items: [] }) } as Response
+      }
+      return realFetch(url, init)
+    }
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/screening`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as { book: { title: string } }
+      assert.equal(body.book.title, 'Good Book', 'should skip the videoless book and return the one with videos')
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = origHc
+      process.env.YOUTUBE_API_KEY = origYt
+      globalThis.fetch = realFetch
+    }
+  })
+})
+
+describe('POST /api/books/videos/dismiss', () => {
+  it('returns 400 when video_id is missing', async () => {
+    const res = await realFetch(`${baseUrl()}/api/books/videos/dismiss`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    assert.equal(res.status, 400)
+  })
+
+  it('returns 204 and persists the dismissal', async () => {
+    const res = await realFetch(`${baseUrl()}/api/books/videos/dismiss`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ video_id: 'test-video-id' }),
+    })
+    assert.equal(res.status, 204)
+  })
+
+  it('is idempotent — dismissing the same video twice does not error', async () => {
+    const body = JSON.stringify({ video_id: 'dupe-video' })
+    const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
+    await realFetch(`${baseUrl()}/api/books/videos/dismiss`, opts)
+    const res = await realFetch(`${baseUrl()}/api/books/videos/dismiss`, opts)
+    assert.equal(res.status, 204)
+  })
+})
+
+// ---- Recommendations ------------------------------------------------------
+
+// Resolve mock maps a title -> a stable, collision-free Hardcover id so tests
+// can predict which book a pick resolves to (and thus drive exclusion).
+const _idRegistry = new Map<string, number>()
+let _nextId = 5000
+const idFor = (t: string) => {
+  if (!_idRegistry.has(t)) _idRegistry.set(t, _nextId++)
+  return _idRegistry.get(t)!
+}
+
+// No author, so the resolve query stays title-only and the mock can map a
+// title straight back to its deterministic id.
+function makePicks(n: number) {
+  return Array.from({ length: n }, (_, i) => ({
+    title: `Pick ${i + 1}`,
+    blurb: `You'd like Pick ${i + 1} because reasons.`,
+  }))
+}
+
+// `read` and `extra` are [title, id?] tuples. read books are status_id 3
+// (the rating signal); extra are want-to-read (status_id 1) for exclusion.
+function makeLibrary(read: [string, number?][], extra: [string, number?][] = []) {
+  const toUb = (status: number) => ([title, id]: [string, number?]) => ({
+    status_id: status,
+    rating: status === 3 ? 4 : null,
+    review_raw: null,
+    book: { id: id ?? idFor(title), title, contributions: [{ author: { name: 'A' } }] },
+  })
+  return { data: { me: [{ user_books: [...read.map(toUb(3)), ...extra.map(toUb(1))] }] } }
+}
+
+const FIVE_READ: [string, number?][] = [['Read A'], ['Read B'], ['Read C'], ['Read D'], ['Read E']]
+
+// Only Hardcover is mocked now — generation happens in a chat session, so the
+// picks arrive via the POST /pool body rather than from an API.
+function mockRecs(library: unknown) {
+  clearBooksCache()
+  globalThis.fetch = async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    const urlStr = url.toString()
+    if (urlStr.includes('hardcover.app')) {
+      const query = typeof init?.body === 'string' ? (JSON.parse(init.body) as { query?: string }).query ?? '' : ''
+      if (query.includes('search(')) {
+        const m = query.match(/query:\s*("(?:[^"\\]|\\.)*")/)
+        const title = m ? JSON.parse(m[1]) as string : 'Unknown'
+        return { json: async () => ({
+          data: { search: { results: { hits: [
+            { document: { id: idFor(title), slug: 'a-slug', title, image: null, author_names: ['A'] } },
+          ] } } },
+        }) } as Response
+      }
+      return { json: async () => library } as Response
+    }
+    return realFetch(url, init)
+  }
+}
+
+function seedPool(n: number, library: unknown) {
+  mockRecs(library)
+  return realFetch(`${baseUrl()}/api/books/recommendations/pool`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ picks: makePicks(n) }),
+  })
+}
+
+describe('POST /api/books/recommendations/pool', () => {
+  it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    delete process.env.HARDCOVER_API_TOKEN
+    const res = await realFetch(`${baseUrl()}/api/books/recommendations/pool`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ picks: makePicks(3) }),
+    })
+    assert.equal(res.status, 503)
+    process.env.HARDCOVER_API_TOKEN = orig
+  })
+
+  it('returns 400 when no valid picks are supplied', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/recommendations/pool`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ picks: [{ nope: true }] }),
+      })
+      assert.equal(res.status, 400)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+    }
+  })
+
+  it('seeds the pool and opens the first window of 12', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    try {
+      const res = await seedPool(30, makeLibrary(FIVE_READ))
+      assert.equal(res.status, 200)
+      const body = await res.json() as { recommendations: { title: string; hardcover_id: number }[]; pool_remaining: number }
+      assert.equal(body.recommendations.length, 12)
+      assert.equal(body.recommendations[0].title, 'Pick 1')
+      assert.equal(body.pool_remaining, 18)
+      assert.ok(body.recommendations.every((r) => r.hardcover_id))
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('skips a pick already in the library when opening the window', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    try {
+      // "Pick 1" is already on the want-to-read shelf (same resolved id).
+      const res = await seedPool(30, makeLibrary(FIVE_READ, [['Pick 1', idFor('Pick 1')]]))
+      const body = await res.json() as { recommendations: { title: string }[]; pool_remaining: number }
+      // The window stays full — the skipped pick is backfilled from the pool.
+      assert.equal(body.recommendations.length, 12)
+      assert.ok(!body.recommendations.some((r) => r.title === 'Pick 1'))
+      // 13 candidates consumed (Pick 1 skipped, Pick 2..13 shown).
+      assert.equal(body.pool_remaining, 17)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})
+
+describe('POST /api/books/recommendations/more', () => {
+  it('advances to the next window of picks', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    try {
+      await seedPool(30, makeLibrary(FIVE_READ))
+      const res = await realFetch(`${baseUrl()}/api/books/recommendations/more`, { method: 'POST' })
+      const body = await res.json() as { recommendations: { title: string }[]; pool_remaining: number; exhausted: boolean }
+      assert.equal(body.recommendations.length, 12)
+      assert.equal(body.recommendations[0].title, 'Pick 13')
+      assert.equal(body.pool_remaining, 6)
+      assert.equal(body.exhausted, false)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('reports exhausted and keeps the current window once the pool is spent', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    try {
+      await seedPool(12, makeLibrary(FIVE_READ)) // exactly one window
+      const res = await realFetch(`${baseUrl()}/api/books/recommendations/more`, { method: 'POST' })
+      const body = await res.json() as { recommendations: unknown[]; pool_remaining: number; exhausted: boolean }
+      assert.equal(body.exhausted, true)
+      assert.equal(body.pool_remaining, 0)
+      assert.equal(body.recommendations.length, 12)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})
+
+describe('GET /api/books/recommendations', () => {
+  it('filters out picks that have since landed in the library', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    try {
+      await seedPool(30, makeLibrary(FIVE_READ)) // window = Pick 1..12
+
+      // Now "Pick 3" is on the shelf — GET should hide it.
+      mockRecs(makeLibrary(FIVE_READ, [['Pick 3', idFor('Pick 3')]]))
+      const res = await realFetch(`${baseUrl()}/api/books/recommendations`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as { recommendations: { title: string }[]; pool_remaining: number }
+      assert.equal(body.recommendations.length, 11)
+      assert.ok(!body.recommendations.some((r) => r.title === 'Pick 3'))
+      assert.equal(body.pool_remaining, 18)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})
+
+describe('GET /api/books/recommendations/profile', () => {
+  it('returns the read books with ratings', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockRecs(makeLibrary(FIVE_READ))
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/recommendations/profile`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as { read: { title: string; rating: number | null }[]; total_read: number }
+      assert.equal(body.total_read, 5)
+      assert.ok(body.read.every((b) => b.rating === 4))
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})
+
+describe('DELETE /api/books/recommendations/:id', () => {
+  it('returns 400 for a non-numeric id', async () => {
+    const res = await realFetch(`${baseUrl()}/api/books/recommendations/abc`, { method: 'DELETE' })
+    assert.equal(res.status, 400)
+  })
+
+  it('removes a recommendation from the active window', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    try {
+      const seeded = await seedPool(30, makeLibrary(FIVE_READ))
+      const { recommendations } = await seeded.json() as { recommendations: { id: number }[] }
+      const target = recommendations[0].id
+
+      const del = await realFetch(`${baseUrl()}/api/books/recommendations/${target}`, { method: 'DELETE' })
+      assert.equal(del.status, 204)
+
+      mockRecs(makeLibrary(FIVE_READ))
+      const after = await realFetch(`${baseUrl()}/api/books/recommendations`)
+      const body = await after.json() as { recommendations: { id: number }[] }
+      assert.equal(body.recommendations.length, 11)
+      assert.ok(!body.recommendations.some((r) => r.id === target))
     } finally {
       process.env.HARDCOVER_API_TOKEN = orig
       globalThis.fetch = realFetch
