@@ -17,6 +17,17 @@ export function todayIso(): string {
   return toIso(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
+// Local calendar day for a timestamp. Handles bare dates (passthrough), ISO
+// strings with timezone (books), and sqlite's UTC 'YYYY-MM-DD HH:MM:SS'
+// (backlog created_at) — an evening UTC timestamp belongs to the local day.
+export function timestampToLocalIso(ts: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ts)) return ts
+  const normalized = ts.includes('T') ? ts : `${ts.replace(' ', 'T')}Z`
+  const d = new Date(normalized)
+  if (isNaN(d.getTime())) return ts.slice(0, 10)
+  return toIso(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
 export function daysBetween(aIso: string, bIso: string): number {
   return Math.round((parseLocal(bIso).getTime() - parseLocal(aIso).getTime()) / 86400000)
 }

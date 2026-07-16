@@ -22,6 +22,8 @@ export interface CalendarSource {
   label: string // legend chip text
   icon: string
   color: string // legend chip color
+  // Sam-only source: invisible (legend included) unless authenticated.
+  requiresAuth?: boolean
   fetch(): Promise<{ events: CalendarEvent[]; spans?: CalendarSpan[] }>
 }
 

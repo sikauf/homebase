@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { assignSpanLanes, daysBetween, monthWeeks, spanSegmentsForWeek, todayIso } from '../modules/calendar/dates'
+import { assignSpanLanes, daysBetween, monthWeeks, spanSegmentsForWeek, timestampToLocalIso, todayIso } from '../modules/calendar/dates'
 import type { CalendarSpan } from '../modules/calendar/types'
 import CalendarPage from '../modules/calendar/CalendarPage'
 
@@ -40,6 +40,15 @@ describe('calendar date helpers', () => {
   it('daysBetween is timezone-safe across month boundaries', () => {
     expect(daysBetween('2026-06-30', '2026-07-01')).toBe(1)
     expect(daysBetween('2026-07-01', '2026-07-01')).toBe(0)
+  })
+
+  it('timestampToLocalIso converts UTC timestamps to the local day', () => {
+    expect(timestampToLocalIso('2026-07-16')).toBe('2026-07-16')
+    // sqlite UTC datetime and ISO-with-offset agree with a manual local conversion
+    const viaDate = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    expect(timestampToLocalIso('2026-07-16 02:30:00')).toBe(viaDate(new Date('2026-07-16T02:30:00Z')))
+    expect(timestampToLocalIso('2026-07-16T21:07:28.800986+00:00')).toBe(viaDate(new Date('2026-07-16T21:07:28Z')))
   })
 
   it('assignSpanLanes stacks overlapping spans into separate lanes', () => {

@@ -7,6 +7,7 @@ const clean: CalendarSource = {
   label: 'Clean',
   icon: '🌿',
   color: 'rgb(74,222,128)',
+  requiresAuth: true,
   async fetch() {
     const days = await getJSON<CleanDay[]>('/api/clean/days')
     return {

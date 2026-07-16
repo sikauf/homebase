@@ -1,19 +1,14 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useState } from 'react'
+import { setAuthState, useAuthState } from '../../auth'
 
 // Reads are public; this small prompt (in the sidebar / mobile drawer)
-// unlocks write access with the shared password.
+// unlocks write access (and Sam-only sections) with the shared password.
 export default function AreYouSam() {
-  const [status, setStatus] = useState<'checking' | 'anon' | 'sam'>('checking')
+  const status = useAuthState()
   const [open, setOpen] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => setStatus(res.ok ? 'sam' : 'anon'))
-      .catch(() => setStatus('anon'))
-  }, [])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -27,7 +22,7 @@ export default function AreYouSam() {
         body: JSON.stringify({ password }),
       })
       if (res.ok) {
-        setStatus('sam')
+        setAuthState('sam')
         setOpen(false)
       } else {
         setError(true)

@@ -57,6 +57,15 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   res.status(401).json({ error: 'Unauthorized' })
 }
 
+// Private modules (e.g. clean) opt out of public reads: every method needs auth.
+export function requireSam(req: Request, res: Response, next: NextFunction) {
+  if (isAuthenticated(req)) {
+    next()
+    return
+  }
+  res.status(401).json({ error: 'Unauthorized' })
+}
+
 export const authRouter = Router()
 
 authRouter.post('/login', (req: Request, res: Response) => {

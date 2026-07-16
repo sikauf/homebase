@@ -1,9 +1,11 @@
+import { Router } from 'express'
 import db from '../../db/client'
 import { defineCrud, dateField, enumField } from '../../shared/crud'
+import { requireSam } from '../../shared/auth'
 
 const VALID_STATES = new Set(['clean', 'gold'])
 
-export default defineCrud({
+const crud = defineCrud({
   db,
   table: 'clean_days',
   list: { route: '/days', orderBy: 'date ASC' },
@@ -22,3 +24,10 @@ export default defineCrud({
     notFoundError: 'Date not found',
   },
 })
+
+// Clean is private: unlike the rest of the app, even reads require auth.
+const router = Router()
+router.use(requireSam)
+router.use(crud)
+
+export default router

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAuthState } from '../../auth'
 import { daysBetween, parseLocal, todayIso } from './dates'
 import MonthGrid, { SourcedEvent, SourcedSpan } from './MonthGrid'
 import { sources } from './sources'
-import type { CalendarEvent, CalendarSpan } from './types'
+import type { CalendarEvent, CalendarSource, CalendarSpan } from './types'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -19,28 +20,42 @@ export default function CalendarPage() {
   const [data, setData] = useState<Map<string, SourceData>>(new Map())
   const [failed, setFailed] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const authState = useAuthState()
+  const fetched = useRef(new Set<string>())
+
+  // Auth-gated sources join once /api/auth/me confirms Sam; anonymous viewers
+  // never see them (no legend chip, no fetch — the server would 401 anyway).
+  const activeSources = useMemo(
+    () => sources.filter((s) => !s.requiresAuth || authState === 'sam'),
+    [authState],
+  )
 
   useEffect(() => {
-    Promise.allSettled(sources.map((s) => s.fetch())).then((results) => {
-      const loaded = new Map<string, SourceData>()
-      const errors: string[] = []
-      results.forEach((r, i) => {
-        if (r.status === 'fulfilled') {
-          loaded.set(sources[i].id, { events: r.value.events, spans: r.value.spans ?? [] })
-        } else {
-          errors.push(sources[i].label)
-        }
+    const pending = activeSources.filter((s) => !fetched.current.has(s.id))
+    if (pending.length === 0) return
+    pending.forEach((s) => fetched.current.add(s.id))
+    Promise.allSettled(pending.map((s) => s.fetch())).then((results) => {
+      setData((prev) => {
+        const next = new Map(prev)
+        results.forEach((r, i) => {
+          if (r.status === 'fulfilled') {
+            next.set(pending[i].id, { events: r.value.events, spans: r.value.spans ?? [] })
+          }
+        })
+        return next
       })
-      setData(loaded)
-      setFailed(errors)
+      setFailed((prev) => [
+        ...prev,
+        ...results.flatMap((r, i) => (r.status === 'rejected' ? [pending[i].label] : [])),
+      ])
       setLoading(false)
     })
-  }, [])
+  }, [activeSources])
 
   const { eventsByDate, spans } = useMemo(() => {
     const byDate = new Map<string, SourcedEvent[]>()
     const allSpans: SourcedSpan[] = []
-    for (const source of sources) {
+    for (const source of activeSources) {
       if (hidden.has(source.id)) continue
       const d = data.get(source.id)
       if (!d) continue
@@ -52,7 +67,7 @@ export default function CalendarPage() {
       for (const s of d.spans) allSpans.push({ ...s, sourceId: source.id })
     }
     return { eventsByDate: byDate, spans: allSpans }
-  }, [data, hidden])
+  }, [data, hidden, activeSources])
 
   function shiftMonth(delta: number) {
     setCursor(({ year, month }) => {
@@ -121,7 +136,7 @@ export default function CalendarPage() {
 
         {/* Legend / source filters — derived from the registry */}
         <div className="flex flex-wrap gap-2 mb-4 px-1">
-          {sources.map((s) => {
+          {activeSources.map((s) => {
             const off = hidden.has(s.id)
             return (
               <button
@@ -164,7 +179,7 @@ export default function CalendarPage() {
               eventsByDate={eventsByDate}
               spans={spans}
             />
-            <DayDetail selected={selected} today={today} eventsByDate={eventsByDate} spans={spans} />
+            <DayDetail selected={selected} today={today} eventsByDate={eventsByDate} spans={spans} activeSources={activeSources} />
           </>
         )}
       </div>
@@ -172,20 +187,21 @@ export default function CalendarPage() {
   )
 }
 
-function DayDetail({ selected, today, eventsByDate, spans }: {
+function DayDetail({ selected, today, eventsByDate, spans, activeSources }: {
   selected: string
   today: string
   eventsByDate: Map<string, SourcedEvent[]>
   spans: SourcedSpan[]
+  activeSources: CalendarSource[]
 }) {
   const events = eventsByDate.get(selected) ?? []
   const activeSpans = spans.filter((s) => selected >= s.startDate && selected <= (s.endDate ?? today))
   const heading = parseLocal(selected).toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   })
-  const sourceById = new Map(sources.map((s) => [s.id, s]))
+  const sourceById = new Map(activeSources.map((s) => [s.id, s]))
 
-  const groups = sources
+  const groups = activeSources
     .map((source) => ({ source, items: events.filter((e) => e.sourceId === source.id) }))
     .filter((g) => g.items.length > 0)
 

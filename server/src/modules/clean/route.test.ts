@@ -114,3 +114,32 @@ describe('GET /api/clean/days after mutations', () => {
     }
   })
 })
+
+describe('clean is Sam-only (auth required even for reads)', () => {
+  const PASSWORD = 'clean-secret'
+
+  it('rejects unauthenticated reads when AUTH_PASSWORD is set', async () => {
+    process.env.AUTH_PASSWORD = PASSWORD
+    try {
+      assert.equal((await fetch(`${baseUrl()}/api/clean/days`)).status, 401)
+    } finally {
+      delete process.env.AUTH_PASSWORD
+    }
+  })
+
+  it('allows reads with a bearer token', async () => {
+    process.env.AUTH_PASSWORD = PASSWORD
+    try {
+      const res = await fetch(`${baseUrl()}/api/clean/days`, {
+        headers: { Authorization: `Bearer ${PASSWORD}` },
+      })
+      assert.equal(res.status, 200)
+    } finally {
+      delete process.env.AUTH_PASSWORD
+    }
+  })
+
+  it('stays open when auth is not configured (local dev)', async () => {
+    assert.equal((await fetch(`${baseUrl()}/api/clean/days`)).status, 200)
+  })
+})

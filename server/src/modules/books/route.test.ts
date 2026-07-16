@@ -956,3 +956,88 @@ describe('DELETE /api/books/recommendations/:id', () => {
     }
   })
 })
+
+describe('GET /api/books/reading-progress', () => {
+  it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    delete process.env.HARDCOVER_API_TOKEN
+    const res = await realFetch(`${baseUrl()}/api/books/reading-progress`)
+    assert.equal(res.status, 503)
+    process.env.HARDCOVER_API_TOKEN = orig
+  })
+
+  it('returns per-update page deltas and skips pageless or zero-delta events', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{ id: 42 }],
+        reading_journals: [
+          {
+            book_id: 1,
+            action_at: '2026-07-15T16:30:00+00:00',
+            metadata: { progress_pages: 109, progress_pages_was: 99 },
+            book: { title: 'East of Eden' },
+          },
+          {
+            book_id: 1,
+            action_at: '2026-07-16T18:17:00+00:00',
+            metadata: { progress_pages: 131, progress_pages_was: 109 },
+            book: { title: 'East of Eden' },
+          },
+          // percent-only update (audiobook / no pages) → skipped
+          {
+            book_id: 2,
+            action_at: '2026-07-16T19:00:00+00:00',
+            metadata: { progress_pages: null, progress_pages_was: null },
+            book: { title: 'Some Audiobook' },
+          },
+          // no movement → skipped
+          {
+            book_id: 1,
+            action_at: '2026-07-16T20:00:00+00:00',
+            metadata: { progress_pages: 131, progress_pages_was: 131 },
+            book: { title: 'East of Eden' },
+          },
+        ],
+      },
+    })
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/reading-progress`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as Record<string, unknown>[]
+      assert.equal(body.length, 2)
+      assert.deepEqual(body[0], {
+        book_id: 1, title: 'East of Eden', at: '2026-07-15T16:30:00+00:00', pages_read: 10, progress_pages: 109,
+      })
+      assert.equal(body[1].pages_read, 22)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('treats a missing progress_pages_was as starting from zero', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{ id: 42 }],
+        reading_journals: [{
+          book_id: 3,
+          action_at: '2026-07-10T12:00:00+00:00',
+          metadata: { progress_pages: 40 },
+          book: { title: 'Fresh Start' },
+        }],
+      },
+    })
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/reading-progress`)
+      const body = await res.json() as Record<string, unknown>[]
+      assert.equal(body[0].pages_read, 40)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})

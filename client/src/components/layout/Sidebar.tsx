@@ -1,5 +1,6 @@
 import { NavLink, Link } from 'react-router-dom'
 import AreYouSam from './AreYouSam'
+import { useIsSam } from '../../auth'
 import { useCleanVisible } from '../../hooks/useCleanVisible'
 import { sections } from '../../modules/registry'
 import type { SectionManifest } from '../../modules/manifest'
@@ -30,6 +31,7 @@ function NavEntry({ section, onNavigate }: { section: SectionManifest; onNavigat
 // Inner sidebar content, shared by the desktop <aside> and the mobile drawer.
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const [cleanVisible, setCleanVisible] = useCleanVisible()
+  const isSam = useIsSam()
   const { open } = useQuickAdd()
 
   return (
@@ -63,22 +65,24 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <AreYouSam />
       <div className="px-6 py-4 border-t border-gray-800 flex items-center justify-between">
         <p className="text-gray-600 text-xs">v0.1.0</p>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={cleanVisible}
-          aria-label="Toggle"
-          onClick={() => setCleanVisible(!cleanVisible)}
-          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-            cleanVisible ? 'bg-gray-600' : 'bg-gray-800'
-          }`}
-        >
-          <span
-            className={`inline-block h-3 w-3 transform rounded-full bg-gray-400 transition-transform ${
-              cleanVisible ? 'translate-x-3.5' : 'translate-x-0.5'
+        {isSam && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={cleanVisible}
+            aria-label="Toggle"
+            onClick={() => setCleanVisible(!cleanVisible)}
+            className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+              cleanVisible ? 'bg-gray-600' : 'bg-gray-800'
             }`}
-          />
-        </button>
+          >
+            <span
+              className={`inline-block h-3 w-3 transform rounded-full bg-gray-400 transition-transform ${
+                cleanVisible ? 'translate-x-3.5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        )}
       </div>
     </>
   )

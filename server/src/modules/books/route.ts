@@ -416,6 +416,78 @@ router.get('/journal/:bookId', async (req: Request, res: Response) => {
   res.json(result)
 })
 
+// ---- Reading progress (pages per update, for the calendar) -----------------
+// One query returns every progress_updated journal event across all books;
+// each carries the absolute page position before/after, so pages read per day
+// is just the per-day sum of deltas (computed client-side in local time).
+
+// Hardcover caps result sets at 100 rows, so page with offset until a short page.
+const PROGRESS_PAGE_SIZE = 100
+
+const progressQuery = (userId: number, offset: number) => `{
+  reading_journals(
+    where: { user_id: { _eq: ${userId} }, event: { _eq: "progress_updated" } }
+    order_by: { action_at: asc }
+    limit: ${PROGRESS_PAGE_SIZE}
+    offset: ${offset}
+  ) {
+    book_id
+    action_at
+    metadata
+    book { title }
+  }
+}`
+
+interface RawProgress {
+  book_id: number
+  action_at: string
+  metadata: { progress_pages?: number | null; progress_pages_was?: number | null } | null
+  book: { title: string } | null
+}
+
+router.get('/reading-progress', async (_req: Request, res: Response) => {
+  const token = process.env.HARDCOVER_API_TOKEN
+  if (!token) { res.status(503).json({ error: 'HARDCOVER_API_TOKEN not configured' }); return }
+
+  const cached = hitCache('reading-progress')
+  if (cached) { res.json(cached); return }
+
+  const journals: RawProgress[] = []
+  try {
+    const userId = await getMyUserId(token)
+    if (userId == null) { res.status(502).json({ error: 'Unexpected response from Hardcover API' }); return }
+    // 50 pages = 5000 updates; plenty of headroom while still bounded.
+    for (let page = 0; page < 50; page++) {
+      const data: { data?: { reading_journals?: RawProgress[] }; errors?: { message: string }[] } =
+        await hardcoverQuery(token, progressQuery(userId, page * PROGRESS_PAGE_SIZE))
+      if (data.errors?.length) { res.status(502).json({ error: data.errors[0].message }); return }
+      const batch = data.data?.reading_journals ?? []
+      journals.push(...batch)
+      if (batch.length < PROGRESS_PAGE_SIZE) break
+    }
+  } catch {
+    res.status(503).json({ error: 'Failed to reach Hardcover API' }); return
+  }
+
+  const updates = journals.flatMap((j) => {
+    const pages = j.metadata?.progress_pages
+    if (typeof pages !== 'number') return []
+    const was = typeof j.metadata?.progress_pages_was === 'number' ? j.metadata.progress_pages_was : 0
+    const pages_read = pages - was
+    if (pages_read === 0) return []
+    return [{
+      book_id: j.book_id,
+      title: j.book?.title ?? 'Unknown',
+      at: j.action_at,
+      pages_read,
+      progress_pages: pages,
+    }]
+  })
+
+  setCache('reading-progress', updates)
+  res.json(updates)
+})
+
 // ---- Screening Room -------------------------------------------------------
 // Surfaces a random completed book plus YouTube analysis videos for it.
 
