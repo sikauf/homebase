@@ -46,6 +46,7 @@ export default function App() {
                       <TabbedSection
                         basePath={s.path}
                         tabs={s.tabs}
+                        reorderable={s.reorderable !== false}
                         routesClassName={s.routesClassName}
                       />
                     }

@@ -14,6 +14,8 @@ export interface SectionManifest {
   description?: string
   useVisible?: () => boolean
   tabs?: TabManifest[]
+  /** Set false to pin tabs to manifest order (no drag-reorder, ignores any saved order). */
+  reorderable?: boolean
   Section?: ComponentType
   routesClassName?: string
 }

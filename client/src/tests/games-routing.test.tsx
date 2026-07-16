@@ -3,9 +3,12 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import GamesPage from '../modules/games/GamesPage'
 
-// Stub out SlayTheSpire2 so tests don't need a running API
+// Stub out the API-backed pages so tests don't need a running server
 vi.mock('../modules/games/sts2/Page', () => ({
   default: () => <div data-testid="sts2-panel" />,
+}))
+vi.mock('../modules/games/shovelknight/Page', () => ({
+  default: () => <div data-testid="shovelknight-panel" />,
 }))
 
 function renderAt(path: string) {
@@ -34,8 +37,15 @@ describe('Games tab navigation', () => {
     expect(screen.getByTestId('sts2-panel')).toBeInTheDocument()
   })
 
-  it('redirects /games to /games/sts2 and renders STS2 panel', () => {
+  it('redirects /games to the first tab (Shovel Knight) and renders its panel', () => {
     renderAt('/games')
-    expect(screen.getByTestId('sts2-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('shovelknight-panel')).toBeInTheDocument()
+  })
+
+  it('orders the tabs Shovel Knight first, Slay the Spire 2 second', () => {
+    renderAt('/games/sts2')
+    const links = screen.getAllByRole('link')
+    expect(links[0]).toHaveTextContent('Shovel Knight')
+    expect(links[1]).toHaveTextContent('Slay the Spire 2')
   })
 })

@@ -11,11 +11,12 @@ export const manifest: SectionManifest = {
   order: 2,
   description: 'Runs & progress',
   tabs: [
+    { label: 'Shovel Knight', path: 'shovelknight', Page: ShovelKnight },
     { label: 'Slay the Spire 2', path: 'sts2', Page: SlayTheSpire2 },
     { label: 'Hades II', path: 'hades2', Page: HadesII },
     { label: 'Mewgenics', path: 'mewgenics', Page: Mewgenics },
     { label: 'Minishoot Adventures', path: 'minishoot', Page: MinishootAdventures },
-    { label: 'Shovel Knight', path: 'shovelknight', Page: ShovelKnight },
   ],
+  reorderable: false,
   routesClassName: 'flex-1 flex p-2.5 sm:p-5 bg-black min-h-0',
 }
