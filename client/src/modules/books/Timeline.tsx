@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { fetchJSON } from './shared'
 import JournalModal, { type JournalBook } from './JournalModal'
 
@@ -190,35 +190,14 @@ function buildMarkers(scale: Scale): Marker[] {
 }
 
 // --- Book card --------------------------------------------------------------
-function BookCard({ placed, hovered, onHover, onOpen }: {
-  placed: Placed
-  hovered: boolean
-  onHover: (id: number | null) => void
-  onOpen: () => void
-}) {
-  const { book, lane, top, barH, durDays, hasDuration, startT, finishT } = placed
+// Cover + duration spine + text block, shared by the desktop chart's absolute
+// cards and the mobile chronological list.
+function CardInner({ span, hovered }: { span: Span & { barH: number }; hovered: boolean }) {
+  const { book, barH, durDays, hasDuration, startT, finishT } = span
   const rgb = book.accent_rgb ?? FALLBACK_RGB
-  const left = AXIS_W + lane * (LANE_W + LANE_GAP)
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
-      onMouseEnter={() => onHover(book.book_id)}
-      onMouseLeave={() => onHover(null)}
-      className="absolute flex cursor-pointer select-none"
-      style={{
-        left,
-        top,
-        width: LANE_W,
-        gap: 14,
-        transform: hovered ? 'translateX(2px)' : 'none',
-        transition: 'transform 0.15s ease',
-        zIndex: hovered ? 30 : 5,
-      }}
-    >
+    <>
       {/* Duration spine + cover head */}
       <div className="relative shrink-0" style={{ width: COVER_W, height: Math.max(barH, COVER_H) }}>
         {/* Duration pill — height literally = days spent reading */}
@@ -299,6 +278,109 @@ function BookCard({ placed, hovered, onHover, onOpen }: {
           </span>
         </div>
       </div>
+    </>
+  )
+}
+
+function BookCard({ placed, hovered, onHover, onOpen }: {
+  placed: Placed
+  hovered: boolean
+  onHover: (id: number | null) => void
+  onOpen: () => void
+}) {
+  const left = AXIS_W + placed.lane * (LANE_W + LANE_GAP)
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
+      onMouseEnter={() => onHover(placed.book.book_id)}
+      onMouseLeave={() => onHover(null)}
+      className="absolute flex cursor-pointer select-none"
+      style={{
+        left,
+        top: placed.top,
+        width: LANE_W,
+        gap: 14,
+        transform: hovered ? 'translateX(2px)' : 'none',
+        transition: 'transform 0.15s ease',
+        zIndex: hovered ? 30 : 5,
+      }}
+    >
+      <CardInner span={placed} hovered={hovered} />
+    </div>
+  )
+}
+
+// --- Mobile list ------------------------------------------------------------
+// The parallel-lane chart needs ~580px; below the sm breakpoint we render a
+// single chronological column with month separators instead.
+function useIsNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 639px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const onChange = () => setNarrow(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return narrow
+}
+
+function MobileList({ books, onOpen }: { books: CompletedBook[]; onOpen: (b: CompletedBook) => void }) {
+  const rows = useMemo(() => {
+    const spans = buildSpans(books).sort((a, b) => a.startT - b.startT || a.finishT - b.finishT)
+    return spans.map((span) => ({
+      ...span,
+      barH: span.hasDuration ? Math.max(span.durDays * PX_PER_DAY, MIN_BAR_H) : COVER_H,
+    }))
+  }, [books])
+
+  let lastMonthKey = ''
+  return (
+    <div className="flex flex-col gap-5 pb-6">
+      {rows.map((span) => {
+        const d = new Date(span.startT)
+        const monthKey = `${d.getFullYear()}-${d.getMonth()}`
+        const showMonth = monthKey !== lastMonthKey
+        const isJan = d.getMonth() === 0
+        const label = showMonth && (lastMonthKey === '' || isJan)
+          ? `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
+          : MONTH_NAMES[d.getMonth()]
+        lastMonthKey = monthKey
+        return (
+          <Fragment key={span.book.book_id}>
+            {showMonth && (
+              <div className="flex items-center gap-3 mt-2">
+                <span
+                  className="uppercase"
+                  style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.14em',
+                    color: 'rgba(210,180,140,0.55)',
+                    fontFamily: "'Kreon', serif",
+                  }}
+                >
+                  {label}
+                </span>
+                <div className="h-px flex-1" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              </div>
+            )}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpen(span.book)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(span.book) } }}
+              className="flex cursor-pointer select-none"
+              style={{ gap: 14 }}
+            >
+              <CardInner span={span} hovered={false} />
+            </div>
+          </Fragment>
+        )
+      })}
     </div>
   )
 }
@@ -382,6 +464,7 @@ export default function Timeline() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<JournalBook | null>(null)
+  const isNarrow = useIsNarrow()
 
   useEffect(() => {
     fetchJSON<CompletedBook[]>('/api/books/completed')
@@ -415,7 +498,7 @@ export default function Timeline() {
           </div>
           {hasData && (
             <p className="text-center mt-3" style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: "'Kreon', serif", letterSpacing: '0.04em' }}>
-              bar length = days spent · side-by-side = read at the same time
+              bar length = days spent<span className="hidden sm:inline"> · side-by-side = read at the same time</span>
             </p>
           )}
         </div>
@@ -440,7 +523,9 @@ export default function Timeline() {
         )}
 
         {!loading && !error && hasData && (
-          <Chart books={books} onOpen={setSelected} />
+          isNarrow
+            ? <MobileList books={books} onOpen={setSelected} />
+            : <Chart books={books} onOpen={setSelected} />
         )}
       </div>
 
