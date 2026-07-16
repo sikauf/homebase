@@ -75,7 +75,7 @@ describe('GET /api/books/currently-reading', () => {
       data: {
         me: [{
           user_books: [{
-            user_book_reads: [{ progress_pages: 150 }],
+            user_book_reads: [{ progress_pages: 150, started_at: '2026-07-01' }],
             book: {
               title: 'Test Book',
               pages: 400,
@@ -95,6 +95,7 @@ describe('GET /api/books/currently-reading', () => {
       assert.equal(body[0].author, 'Test Author')
       assert.equal(body[0].pages, 400)
       assert.equal(body[0].progress_pages, 150)
+      assert.equal(body[0].started_at, '2026-07-01')
       assert.equal(body[0].cover_url, null)
       assert.equal(body[0].accent_rgb, null)
     } finally {

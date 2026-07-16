@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-const WORKOUT_TYPES = [
+export const WORKOUT_TYPES = [
   { id: 'core',      label: 'Core',      color: '#fb923c' },
   { id: 'cardio',    label: 'Cardio',    color: '#f87171' },
   { id: 'legs',      label: 'Legs',      color: '#a78bfa' },
