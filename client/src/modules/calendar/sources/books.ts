@@ -7,6 +7,8 @@ interface ProgressUpdate { book_id: number; title: string; at: string; pages_rea
 
 const FALLBACK = 'rgb(120,130,150)'
 const bookColor = (rgb: string | null | undefined) => (rgb ? `rgb(${rgb})` : FALLBACK)
+// Folds a day's pages-read onto that book's reading-span row in the day panel.
+const spanKey = (bookId: number) => `book:${bookId}`
 
 const books: CalendarSource = {
   id: 'books',
@@ -36,6 +38,7 @@ const books: CalendarSource = {
           endDate: b.finished_at.slice(0, 10),
           label: b.title,
           color: bookColor(b.accent_rgb),
+          key: spanKey(b.book_id),
         })
       }
     }
@@ -48,6 +51,7 @@ const books: CalendarSource = {
           endDate: null,
           label: b.title,
           color: bookColor(b.accent_rgb),
+          key: spanKey(b.book_id),
         })
       }
     }
@@ -55,20 +59,24 @@ const books: CalendarSource = {
     // Pages read per local day per book, summed across that day's updates.
     const events: CalendarEvent[] = []
     if (progress.status === 'fulfilled') {
-      const perDay = new Map<string, { title: string; pages: number; accent: string | null }>()
+      const perDay = new Map<string, { date: string; bookId: number; title: string; pages: number; accent: string | null }>()
       for (const u of progress.value) {
-        const day = timestampToLocalIso(u.at)
-        const key = `${day}|${u.book_id}`
-        const entry = perDay.get(key) ?? { title: u.title, pages: 0, accent: accentByBook.get(u.book_id) ?? null }
+        const date = timestampToLocalIso(u.at)
+        const key = `${date}|${u.book_id}`
+        const entry = perDay.get(key)
+          ?? { date, bookId: u.book_id, title: u.title, pages: 0, accent: accentByBook.get(u.book_id) ?? null }
         entry.pages += u.pages_read
         perDay.set(key, entry)
       }
-      for (const [key, { title, pages, accent }] of perDay) {
+      for (const { date, bookId, title, pages, accent } of perDay.values()) {
         if (pages <= 0) continue
+        const detail = `${pages} ${pages === 1 ? 'page' : 'pages'}`
         events.push({
-          date: key.slice(0, key.indexOf('|')),
-          label: `${title} — ${pages} ${pages === 1 ? 'page' : 'pages'}`,
+          date,
+          label: `${title} — ${detail}`,
           color: bookColor(accent),
+          spanKey: spanKey(bookId),
+          detail,
         })
       }
     }

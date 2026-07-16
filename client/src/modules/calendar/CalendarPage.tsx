@@ -201,8 +201,22 @@ function DayDetail({ selected, today, eventsByDate, spans, activeSources }: {
   })
   const sourceById = new Map(activeSources.map((s) => [s.id, s]))
 
+  // An event keyed to a span active today rides that span's row instead of
+  // getting its own — otherwise a book reads as two bullets, the ribbon's
+  // "day 3 of 10" and a "Dune — 42 pages" repeating the title beneath it.
+  const spanKeys = new Set(activeSpans.flatMap((s) => (s.key ? [s.key] : [])))
+  const foldedByKey = new Map<string, SourcedEvent[]>()
+  const looseEvents: SourcedEvent[] = []
+  for (const e of events) {
+    if (e.spanKey && spanKeys.has(e.spanKey)) {
+      foldedByKey.set(e.spanKey, [...(foldedByKey.get(e.spanKey) ?? []), e])
+    } else {
+      looseEvents.push(e)
+    }
+  }
+
   const groups = activeSources
-    .map((source) => ({ source, items: events.filter((e) => e.sourceId === source.id) }))
+    .map((source) => ({ source, items: looseEvents.filter((e) => e.sourceId === source.id) }))
     .filter((g) => g.items.length > 0)
 
   return (
@@ -220,11 +234,14 @@ function DayDetail({ selected, today, eventsByDate, spans, activeSources }: {
             const dayN = daysBetween(span.startDate, selected) + 1
             const total = span.endDate ? daysBetween(span.startDate, span.endDate) + 1 : null
             const icon = sourceById.get(span.sourceId)?.icon ?? ''
+            const folded = (span.key ? foldedByKey.get(span.key) : undefined) ?? []
+            const detail = folded.map((e) => e.detail ?? e.label).join(', ')
             return (
               <div key={`span-${i}`} className="flex items-center gap-2.5">
                 <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: span.color }} />
                 <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>
                   {icon} {span.label}
+                  {detail && <span style={{ color: 'rgba(255,255,255,0.55)' }}> — {detail}</span>}
                   <span className="ml-2 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
                     day {dayN}{total ? ` of ${total}` : ''}
                   </span>
