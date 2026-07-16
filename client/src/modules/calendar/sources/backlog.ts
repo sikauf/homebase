@@ -9,30 +9,25 @@ interface BacklogItem {
   completed_at: string | null
 }
 
-const ADDED_COLOR = 'rgb(148,163,184)'
 const DONE_COLOR = 'rgb(94,234,212)'
 
+// Only completions land on the calendar — adding an item isn't something that
+// happened that day worth marking, finishing it is.
 const backlog: CalendarSource = {
   id: 'backlog',
   label: 'Backlog',
   icon: '📋',
-  color: ADDED_COLOR,
+  color: DONE_COLOR,
   async fetch() {
     const items = await getJSON<BacklogItem[]>('/api/backlog/items')
     const events: CalendarEvent[] = []
     for (const item of items) {
+      if (item.status !== 'done' || !item.completed_at) continue
       events.push({
-        date: timestampToLocalIso(item.created_at),
-        label: `Added — ${item.text}`,
-        color: ADDED_COLOR,
+        date: timestampToLocalIso(item.completed_at),
+        label: `Done — ${item.text}`,
+        color: DONE_COLOR,
       })
-      if (item.status === 'done' && item.completed_at) {
-        events.push({
-          date: timestampToLocalIso(item.completed_at),
-          label: `Done — ${item.text}`,
-          color: DONE_COLOR,
-        })
-      }
     }
     return { events }
   },
