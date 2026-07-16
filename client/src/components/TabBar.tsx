@@ -76,13 +76,13 @@ export default function TabBar({ tabs, persistKey }: Props) {
 
   if (!persistKey) {
     return (
-      <div className="bg-gray-900 border-b border-gray-800 px-4 flex gap-1 shrink-0">
+      <div className="bg-gray-900 border-b border-gray-800 px-4 flex gap-1 shrink-0 overflow-x-auto">
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
             className={({ isActive }) =>
-              `px-4 py-3 text-sm font-medium border-b-2 transition-colors select-none ${
+              `px-4 py-3 text-sm font-medium border-b-2 transition-colors select-none whitespace-nowrap shrink-0 ${
                 isActive
                   ? 'border-white text-white'
                   : 'border-transparent text-gray-400 hover:text-white hover:border-gray-500'
@@ -98,7 +98,7 @@ export default function TabBar({ tabs, persistKey }: Props) {
 
   return (
     <div
-      className="bg-gray-900 border-b border-gray-800 px-4 flex gap-1 shrink-0"
+      className="bg-gray-900 border-b border-gray-800 px-4 flex gap-1 shrink-0 overflow-x-auto"
       onDragOver={(e) => {
         if (!draggingTo) return
         e.preventDefault()
@@ -116,7 +116,7 @@ export default function TabBar({ tabs, persistKey }: Props) {
         const isDragging = draggingTo === tab.to
         const showIndicator = draggingTo && dropIdx === i && draggingTo !== tab.to
         return (
-          <div key={tab.to} className="flex items-stretch">
+          <div key={tab.to} className="flex items-stretch shrink-0">
             <span
               className={`w-0.5 -mx-px rounded-full transition-colors ${
                 showIndicator ? 'bg-white/70' : 'bg-transparent'
@@ -145,7 +145,7 @@ export default function TabBar({ tabs, persistKey }: Props) {
                 if (didDrag.current) e.preventDefault()
               }}
               className={({ isActive }) =>
-                `px-4 py-3 text-sm font-medium border-b-2 transition-colors select-none cursor-grab active:cursor-grabbing ${
+                `px-4 py-3 text-sm font-medium border-b-2 transition-colors select-none whitespace-nowrap cursor-grab active:cursor-grabbing ${
                   isActive
                     ? 'border-white text-white'
                     : 'border-transparent text-gray-400 hover:text-white hover:border-gray-500'

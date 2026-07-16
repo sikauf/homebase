@@ -12,8 +12,8 @@ export default function PageWrapper({ title, subtitle, action, children, dark }:
       className={`flex-1 min-h-screen ${dark ? '' : 'bg-gray-50'}`}
       style={dark ? { background: '#0c0c0c' } : undefined}
     >
-      <div className="max-w-5xl mx-auto px-8 py-8">
-        <div className="flex items-start justify-between mb-8">
+      <div className="max-w-5xl mx-auto px-4 py-6 sm:px-8 sm:py-8">
+        <div className="flex items-start justify-between flex-wrap gap-3 mb-6 sm:mb-8">
           <div>
             <h1
               className={`text-2xl font-bold ${dark ? 'text-white' : 'text-gray-900'}`}

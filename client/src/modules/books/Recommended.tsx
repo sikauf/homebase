@@ -161,11 +161,11 @@ export default function Recommended() {
       <div className="flex-1 flex flex-col" style={{ background: '#0c0c0c' }}>
 
         {/* Header */}
-        <div className="px-7 pt-8 pb-7 shrink-0">
+        <div className="px-4 pt-6 pb-5 sm:px-7 sm:pt-8 sm:pb-7 shrink-0">
           <div className="flex items-center gap-5">
             <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }} />
             <div className="text-center">
-              <h2 className="text-2xl font-black tracking-[.35em] uppercase text-white">
+              <h2 className="text-lg sm:text-2xl font-black tracking-[.2em] sm:tracking-[.35em] uppercase text-white">
                 For You
               </h2>
               <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.3)', fontFamily: "'Kreon', serif", letterSpacing: '0.1em' }}>
@@ -211,7 +211,7 @@ export default function Recommended() {
         </div>
 
         {loading && (
-          <div className="px-5 pb-5 grid gap-4" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+          <div className="px-5 pb-5 grid gap-4 grid-cols-1 sm:grid-cols-2">
             {Array.from({ length: 4 }, (_, i) => (
               <div
                 key={i}
@@ -240,7 +240,7 @@ export default function Recommended() {
         )}
 
         {!loading && !error && recs.length > 0 && (
-          <div className="px-5 pb-5 grid gap-4" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+          <div className="px-5 pb-5 grid gap-4 grid-cols-1 sm:grid-cols-2">
             {recs.map((rec, i) => (
               <RecCard key={rec.id} rec={rec} index={i} onRemove={() => remove(rec.id)} />
             ))}

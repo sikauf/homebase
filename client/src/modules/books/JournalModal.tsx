@@ -209,7 +209,7 @@ export default function JournalModal({ book, onClose }: { book: JournalBook; onC
       {/* The book */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative flex w-full overflow-hidden rounded-r-lg rounded-l-md"
+        className="relative flex flex-col sm:flex-row w-full overflow-hidden rounded-r-lg rounded-l-md"
         style={{
           maxWidth: 940,
           height: 'min(86vh, 660px)',
@@ -235,8 +235,7 @@ export default function JournalModal({ book, onClose }: { book: JournalBook; onC
 
         {/* ---- Left page: frontispiece ---- */}
         <div
-          className="relative shrink-0 flex flex-col items-center text-center px-6 py-8"
-          style={{ width: '37%', minWidth: 240 }}
+          className="relative shrink-0 flex flex-col items-center text-center px-6 py-5 sm:py-8 w-full sm:w-[37%] sm:min-w-[240px]"
         >
           {/* gutter shadow on the inner (right) edge */}
           <div
@@ -248,11 +247,11 @@ export default function JournalModal({ book, onClose }: { book: JournalBook; onC
             <img
               src={book.cover_url}
               alt={book.title}
-              className="object-contain"
-              style={{ maxHeight: 230, width: 'auto', maxWidth: '78%', boxShadow: '0 14px 34px rgba(60,40,20,0.4)', borderRadius: 3 }}
+              className="object-contain max-h-[120px] sm:max-h-[230px]"
+              style={{ width: 'auto', maxWidth: '78%', boxShadow: '0 14px 34px rgba(60,40,20,0.4)', borderRadius: 3 }}
             />
           ) : (
-            <div className="flex items-center justify-center text-6xl" style={{ height: 230 }}>📖</div>
+            <div className="flex items-center justify-center text-6xl h-[120px] sm:h-[230px]">📖</div>
           )}
 
           <h2 className="mt-6" style={{ fontFamily: "'Kreon', serif", fontWeight: 700, fontSize: '1.4rem', lineHeight: 1.2, color: INK }}>
@@ -284,8 +283,8 @@ export default function JournalModal({ book, onClose }: { book: JournalBook; onC
           </a>
         </div>
 
-        {/* spine */}
-        <div className="shrink-0" style={{ width: 2, background: 'linear-gradient(to bottom, rgba(60,40,20,0.05), rgba(60,40,20,0.28), rgba(60,40,20,0.05))' }} />
+        {/* spine — horizontal rule when the spread stacks on phones */}
+        <div className="shrink-0 h-[2px] w-full sm:h-auto sm:w-[2px]" style={{ background: 'linear-gradient(to bottom, rgba(60,40,20,0.05), rgba(60,40,20,0.28), rgba(60,40,20,0.05))' }} />
 
         {/* ---- Right page: the journal ---- */}
         <div
@@ -307,7 +306,7 @@ export default function JournalModal({ book, onClose }: { book: JournalBook; onC
           />
 
           {/* header */}
-          <div className="flex items-center justify-between px-8 pt-8 pb-3 shrink-0">
+          <div className="flex items-center justify-between px-5 sm:px-8 pt-5 sm:pt-8 pb-3 shrink-0">
             <span className="uppercase" style={{ fontFamily: "'Kreon', serif", fontSize: '0.72rem', letterSpacing: '0.32em', color: INK_MUTED }}>
               Journal
             </span>
@@ -321,10 +320,10 @@ export default function JournalModal({ book, onClose }: { book: JournalBook; onC
               </button>
             )}
           </div>
-          <div className="mx-8 h-px shrink-0" style={{ background: RULE }} />
+          <div className="mx-5 sm:mx-8 h-px shrink-0" style={{ background: RULE }} />
 
           {/* body */}
-          <div className="flex-1 overflow-y-auto px-8 py-4 min-h-0">
+          <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-4 min-h-0">
             {loading && (
               <div className="space-y-4 pt-2 animate-pulse">
                 {[0, 1, 2].map((i) => (

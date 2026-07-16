@@ -17,5 +17,5 @@ export const manifest: SectionManifest = {
     { label: 'Minishoot Adventures', path: 'minishoot', Page: MinishootAdventures },
     { label: 'Shovel Knight', path: 'shovelknight', Page: ShovelKnight },
   ],
-  routesClassName: 'flex-1 flex p-5 bg-black min-h-0',
+  routesClassName: 'flex-1 flex p-2.5 sm:p-5 bg-black min-h-0',
 }

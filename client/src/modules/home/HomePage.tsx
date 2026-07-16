@@ -37,10 +37,10 @@ function HomeCard({ section }: { section: SectionManifest }) {
 export default function HomePage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-screen" style={{ background: '#0c0c0c' }}>
-      <div className="w-full max-w-xl px-8">
+      <div className="w-full max-w-xl px-4 py-8 sm:px-8">
         <div className="text-center mb-12">
           <h1
-            className="text-4xl font-black tracking-[.2em] uppercase text-white"
+            className="text-3xl sm:text-4xl font-black tracking-[.2em] uppercase text-white"
             style={{ fontFamily: "'Kreon', serif" }}
           >
             Home Base

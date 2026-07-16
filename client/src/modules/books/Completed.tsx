@@ -258,11 +258,11 @@ export default function Completed() {
       <div className="flex-1 flex flex-col" style={{ background: '#0c0c0c' }}>
 
         {/* Header */}
-        <div className="px-7 pt-8 pb-7 shrink-0">
+        <div className="px-4 pt-6 pb-5 sm:px-7 sm:pt-8 sm:pb-7 shrink-0">
           <div className="flex items-center gap-5">
             <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }} />
             <div className="text-center">
-              <h2 className="text-2xl font-black tracking-[.35em] uppercase text-white">
+              <h2 className="text-lg sm:text-2xl font-black tracking-[.2em] sm:tracking-[.35em] uppercase text-white">
                 Archive
               </h2>
               {books.length > 0 && (
@@ -310,7 +310,7 @@ export default function Completed() {
 
         {/* Loading skeletons */}
         {loading && (
-          <div className="px-5 pb-5 grid gap-4" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+          <div className="px-5 pb-5 grid gap-4 grid-cols-2 sm:grid-cols-4">
             {Array.from({ length: 8 }, (_, i) => <SkeletonCard key={i} />)}
           </div>
         )}
@@ -344,7 +344,7 @@ export default function Completed() {
               >
                 {year}
               </p>
-              <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+              <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
                 {entries.map(({ book, globalIndex }) => (
                   <CompletedBookCard
                     key={book.title}

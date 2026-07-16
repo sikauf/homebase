@@ -57,7 +57,7 @@ export default function ShovelKnight() {
           From save synced {new Date(syncedAt).toLocaleString()}
         </p>
       )}
-      <div className="flex-1 px-5 pb-5 grid grid-cols-4 gap-4 min-h-0">
+      <div className="flex-1 px-3 pb-3 sm:px-5 sm:pb-5 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-[minmax(280px,1fr)] min-h-0">
         {CHARACTERS.map((c) => {
           const done = completed.get(c.id)?.size ?? 0
           const total = c.feats.length

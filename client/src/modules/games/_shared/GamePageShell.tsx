@@ -8,13 +8,13 @@ interface Props {
 export default function GamePageShell({ title, children }: Props) {
   return (
     <div className="flex-1 flex flex-col rounded-2xl overflow-hidden" style={{ background: '#0c0c0c' }}>
-      <div className="px-7 pt-8 pb-7 shrink-0">
-        <div className="flex items-center gap-5">
+      <div className="px-4 pt-6 pb-5 sm:px-7 sm:pt-8 sm:pb-7 shrink-0">
+        <div className="flex items-center gap-3 sm:gap-5">
           <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }}/>
           <div className="text-center">
             <h2
-              className="text-2xl font-black tracking-[.35em] uppercase"
-              style={{ color: 'rgba(255,255,255,0.92)', letterSpacing: '0.35em' }}
+              className="text-lg sm:text-2xl font-black tracking-[.2em] sm:tracking-[.35em] uppercase"
+              style={{ color: 'rgba(255,255,255,0.92)' }}
             >
               {title}
             </h2>

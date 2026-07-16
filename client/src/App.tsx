@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import AuthGate from './AuthGate'
 import Sidebar from './components/layout/Sidebar'
+import MobileHeader from './components/layout/MobileHeader'
 import TabbedSection from './components/TabbedSection'
 import { sections } from './modules/registry'
 import { QuickAddProvider, useQuickAdd } from './modules/backlog/QuickAddContext'
@@ -32,7 +33,8 @@ export default function App() {
         <QuickAddProvider>
           <GlobalShortcuts />
           <QuickAddModal />
-          <div className="flex min-h-screen">
+          <MobileHeader />
+          <div className="flex min-h-screen flex-col md:flex-row">
             <Sidebar />
             <Routes>
               {sections.map((s) => {

@@ -71,12 +71,12 @@ export default function BacklogPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen p-8" style={{ background: '#0c0c0c' }}>
+    <div className="flex-1 flex flex-col min-h-screen p-4 sm:p-8" style={{ background: '#0c0c0c' }}>
       <div className="w-full max-w-2xl mx-auto">
         <div className="mb-8 pt-2">
           <div className="flex items-center gap-5 mb-3">
             <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }} />
-            <h1 className="text-2xl font-black tracking-[.35em] uppercase text-white" style={{ fontFamily: "'Kreon', serif" }}>
+            <h1 className="text-lg sm:text-2xl font-black tracking-[.2em] sm:tracking-[.35em] uppercase text-white" style={{ fontFamily: "'Kreon', serif" }}>
               Backlog
             </h1>
             <div className="h-px flex-1" style={{ background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.12))' }} />
@@ -254,7 +254,7 @@ function BacklogRow({
       <button
         type="button"
         onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 text-xs"
+        className="opacity-60 md:opacity-0 md:group-hover:opacity-100 text-xs p-1 -m-1"
         style={{ color: 'rgba(255,255,255,0.35)' }}
         aria-label="Delete"
       >

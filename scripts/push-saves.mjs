@@ -31,14 +31,16 @@ function loadEnv() {
 
 const env = loadEnv()
 const baseUrl = env.HOMEBASE_URL?.replace(/\/$/, '')
-const password = env.AUTH_PASSWORD
+// HOMEBASE_PASSWORD locally (so the dev server doesn't turn auth on by
+// loading .env); AUTH_PASSWORD is the name the server itself uses in prod.
+const password = env.HOMEBASE_PASSWORD ?? env.AUTH_PASSWORD
 
 if (!baseUrl) {
-  console.error('HOMEBASE_URL is not set in .env (e.g. https://1.2.3.4.sslip.io)')
+  console.error('HOMEBASE_URL is not set in .env (e.g. https://sam-homebase.fly.dev)')
   process.exit(1)
 }
 if (!password) {
-  console.error('AUTH_PASSWORD is not set in .env')
+  console.error('HOMEBASE_PASSWORD is not set in .env')
   process.exit(1)
 }
 

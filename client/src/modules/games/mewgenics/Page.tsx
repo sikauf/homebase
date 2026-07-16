@@ -108,7 +108,9 @@ export default function Mewgenics() {
     <GamePageShell title="Collar Progress">
       <style>{SWAY_CSS}</style>
 
-      <div className="flex-1 flex flex-col px-4 pb-8 min-h-0">
+      <div className="flex-1 flex flex-col px-4 pb-8 min-h-0 overflow-x-auto">
+        {/* one wide strip so the rod + all 13 collars scroll together on phones */}
+        <div className="flex-1 flex flex-col min-w-[720px]">
         <div className="relative shrink-0" style={{ height: '16px' }}>
           <div className="absolute" style={{
             left: '-4px', top: '-5px', width: '12px', height: '26px',
@@ -138,6 +140,7 @@ export default function Mewgenics() {
               onClick={() => handleCollarClick(collar)}
             />
           ))}
+        </div>
         </div>
       </div>
     </GamePageShell>

@@ -119,12 +119,12 @@ export default function SlayTheSpire2() {
           From save synced {new Date(syncedAt).toLocaleString()}
         </p>
       )}
-      <div className="flex-1 px-5 pb-5 grid grid-cols-5 gap-3 min-h-0">
+      <div className="flex-1 px-3 pb-3 sm:px-5 sm:pb-5 grid grid-cols-2 lg:grid-cols-5 gap-3 auto-rows-[minmax(230px,1fr)] min-h-0">
         {loading && Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
 
         {error && (
           <div
-            className="col-span-5 text-red-400 text-sm p-5 rounded-xl"
+            className="col-span-2 lg:col-span-5 text-red-400 text-sm p-5 rounded-xl"
             style={{ background: 'rgba(239,68,68,0.1)' }}
           >
             {error}
@@ -186,7 +186,7 @@ export default function SlayTheSpire2() {
                   }}
                 />
                 <span
-                  className="text-7xl leading-none relative z-10"
+                  className="text-6xl sm:text-7xl leading-none relative z-10"
                   style={{
                     fontFamily: "'Kreon', serif",
                     fontWeight: 700,

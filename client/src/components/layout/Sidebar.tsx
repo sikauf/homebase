@@ -4,13 +4,14 @@ import { sections } from '../../modules/registry'
 import type { SectionManifest } from '../../modules/manifest'
 import { useQuickAdd } from '../../modules/backlog/QuickAddContext'
 
-function NavEntry({ section }: { section: SectionManifest }) {
+function NavEntry({ section, onNavigate }: { section: SectionManifest; onNavigate?: () => void }) {
   const visible = section.useVisible ? section.useVisible() : true
   if (!visible) return null
   return (
     <NavLink
       to={section.path}
       end={section.path === '/'}
+      onClick={onNavigate}
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
           isActive
@@ -25,21 +26,26 @@ function NavEntry({ section }: { section: SectionManifest }) {
   )
 }
 
-export default function Sidebar() {
+// Inner sidebar content, shared by the desktop <aside> and the mobile drawer.
+export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const [cleanVisible, setCleanVisible] = useCleanVisible()
   const { open } = useQuickAdd()
 
   return (
-    <aside className="w-56 min-h-screen bg-gray-900 flex flex-col">
+    <>
       <div className="px-6 py-5 border-b border-gray-800">
-        <Link to="/" className="text-white font-bold text-lg tracking-tight hover:text-gray-300 transition-colors">
+        <Link
+          to="/"
+          onClick={onNavigate}
+          className="text-white font-bold text-lg tracking-tight hover:text-gray-300 transition-colors"
+        >
           Home Base
         </Link>
       </div>
       <div className="px-3 pt-3">
         <button
           type="button"
-          onClick={open}
+          onClick={() => { onNavigate?.(); open() }}
           className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
@@ -47,11 +53,11 @@ export default function Sidebar() {
             <span className="text-base leading-none">+</span>
             <span>New backlog item</span>
           </span>
-          <kbd className="px-1.5 py-0.5 rounded text-[10px] text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>n</kbd>
+          <kbd className="hidden md:inline px-1.5 py-0.5 rounded text-[10px] text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>n</kbd>
         </button>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {sections.map((s) => <NavEntry key={s.path} section={s} />)}
+        {sections.map((s) => <NavEntry key={s.path} section={s} onNavigate={onNavigate} />)}
       </nav>
       <div className="px-6 py-4 border-t border-gray-800 flex items-center justify-between">
         <p className="text-gray-600 text-xs">v0.1.0</p>
@@ -72,6 +78,14 @@ export default function Sidebar() {
           />
         </button>
       </div>
+    </>
+  )
+}
+
+export default function Sidebar() {
+  return (
+    <aside className="hidden md:flex w-56 min-h-screen bg-gray-900 flex-col">
+      <SidebarContent />
     </aside>
   )
 }

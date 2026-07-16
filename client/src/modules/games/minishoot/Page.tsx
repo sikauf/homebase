@@ -29,7 +29,7 @@ export default function MinishootAdventures() {
   return (
     <GamePageShell title="Progress">
       <div className="flex-1 flex items-center justify-center min-h-0 p-6">
-        <div className="grid grid-cols-4 gap-8 w-full max-w-5xl">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 w-full max-w-5xl">
           {Array.from({ length: SLOTS }).map((_, i) => (
             <SkullSlot key={i} filled={filled[i]} onClick={() => toggle(i)} />
           ))}

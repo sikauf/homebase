@@ -135,11 +135,11 @@ export default function BinaryDayCalendar({ title, endpoint, accentRgb, countLab
     <div className="flex-1 flex p-5 min-h-0 overflow-y-auto" style={{ background: '#0c0c0c' }}>
       <div className="flex-1 flex flex-col items-center" style={{ background: '#0c0c0c' }}>
 
-        <div className="w-full max-w-lg px-7 pt-8 pb-6 shrink-0">
+        <div className="w-full max-w-lg px-4 pt-6 pb-5 sm:px-7 sm:pt-8 sm:pb-6 shrink-0">
           <div className="flex items-center gap-5">
             <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }} />
             <div className="text-center">
-              <h2 className="text-2xl font-black tracking-[.35em] uppercase text-white">{title}</h2>
+              <h2 className="text-lg sm:text-2xl font-black tracking-[.2em] sm:tracking-[.35em] uppercase text-white">{title}</h2>
               <div className="flex items-center justify-center gap-2 mt-2">
                 <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }} />
                 <div className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }} />

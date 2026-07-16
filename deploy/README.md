@@ -24,7 +24,7 @@ On the Mac, add to the root `.env`:
 
 ```
 HOMEBASE_URL=https://sam-homebase.fly.dev
-AUTH_PASSWORD=<same password as the secret>
+HOMEBASE_PASSWORD=<same password as the secret>
 ```
 
 ## 2. First deploy + seed the DB

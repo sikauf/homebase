@@ -136,14 +136,14 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
 
   return (
     <div
-      className="hades-backdrop fixed inset-0 z-50 flex items-center justify-center p-6"
+      className="hades-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6"
       style={{ background: 'rgba(0, 0, 0, 0.92)' }}
       onClick={onClose}
     >
       <style>{MODAL_CSS}</style>
 
       <div
-        className="hades-panel relative rounded-2xl overflow-hidden"
+        className="hades-panel relative rounded-2xl overflow-hidden p-5 sm:px-10 sm:pt-9 sm:pb-10"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'linear-gradient(180deg, #131019 0%, #0a0810 100%)',
@@ -152,7 +152,6 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
           maxWidth: '1080px',
           width: '100%',
           maxHeight: '92vh',
-          padding: '36px 40px 40px',
           overflowY: 'auto',
         }}
       >
@@ -188,7 +187,7 @@ export default function HadesIIModal({ weapon, completedBosses, onMark, onClose 
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-6 mt-8 items-center" style={{ minHeight: 560 }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 items-center md:min-h-[560px]">
           <div
             className="relative flex flex-col items-center py-6 rounded-xl"
             style={{

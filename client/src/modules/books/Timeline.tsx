@@ -400,7 +400,7 @@ export default function Timeline() {
           <div className="flex items-center gap-5">
             <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }} />
             <div className="text-center">
-              <h2 className="text-2xl font-black tracking-[.35em] uppercase text-white">Timeline</h2>
+              <h2 className="text-lg sm:text-2xl font-black tracking-[.2em] sm:tracking-[.35em] uppercase text-white">Timeline</h2>
               <div className="flex items-center justify-center gap-2 mt-2">
                 <div className="h-px w-10" style={{ background: 'rgba(255,255,255,0.15)' }} />
                 <div className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }} />

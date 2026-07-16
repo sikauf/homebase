@@ -287,11 +287,11 @@ export default function CurrentlyReading() {
       <div className="flex-1 rounded-2xl overflow-hidden flex flex-col" style={{ background: '#0c0c0c' }}>
 
         {/* Header — same ornament as STS2 */}
-        <div className="px-7 pt-8 pb-7 shrink-0">
+        <div className="px-4 pt-6 pb-5 sm:px-7 sm:pt-8 sm:pb-7 shrink-0">
           <div className="flex items-center gap-5">
             <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }} />
             <div className="text-center">
-              <h2 className="text-2xl font-black tracking-[.35em] uppercase text-white">
+              <h2 className="text-lg sm:text-2xl font-black tracking-[.2em] sm:tracking-[.35em] uppercase text-white">
                 On the Nightstand
               </h2>
               <div className="flex items-center justify-center gap-2 mt-2">
@@ -310,8 +310,8 @@ export default function CurrentlyReading() {
 
         {/* Card grid */}
         <div
-          className="flex-1 px-5 pb-5 grid gap-3 min-h-0"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+          className="flex-1 px-5 pb-5 grid gap-3 min-h-0 grid-cols-1 auto-rows-[minmax(340px,1fr)] sm:auto-rows-auto sm:[grid-template-columns:var(--cr-cols)]"
+          style={{ '--cr-cols': `repeat(${cols}, minmax(0, 1fr))` } as React.CSSProperties}
         >
           {loading && [0, 1].map((i) => <SkeletonCard key={i} />)}
 
