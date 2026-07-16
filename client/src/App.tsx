@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import AuthGate from './AuthGate'
 import Sidebar from './components/layout/Sidebar'
 import MobileHeader from './components/layout/MobileHeader'
 import TabbedSection from './components/TabbedSection'
@@ -28,42 +27,40 @@ function GlobalShortcuts() {
 
 export default function App() {
   return (
-    <AuthGate>
-      <BrowserRouter>
-        <QuickAddProvider>
-          <GlobalShortcuts />
-          <QuickAddModal />
-          <MobileHeader />
-          <div className="flex min-h-screen flex-col md:flex-row">
-            <Sidebar />
-            <Routes>
-              {sections.map((s) => {
-                const path = s.path === '/' ? '/' : s.tabs ? `${s.path}/*` : s.path
-                if (s.tabs) {
-                  return (
-                    <Route
-                      key={s.path}
-                      path={path}
-                      element={
-                        <TabbedSection
-                          basePath={s.path}
-                          tabs={s.tabs}
-                          routesClassName={s.routesClassName}
-                        />
-                      }
-                    />
-                  )
-                }
-                if (s.Section) {
-                  const Section = s.Section
-                  return <Route key={s.path} path={path} element={<Section />} />
-                }
-                return null
-              })}
-            </Routes>
-          </div>
-        </QuickAddProvider>
-      </BrowserRouter>
-    </AuthGate>
+    <BrowserRouter>
+      <QuickAddProvider>
+        <GlobalShortcuts />
+        <QuickAddModal />
+        <MobileHeader />
+        <div className="flex min-h-screen flex-col md:flex-row">
+          <Sidebar />
+          <Routes>
+            {sections.map((s) => {
+              const path = s.path === '/' ? '/' : s.tabs ? `${s.path}/*` : s.path
+              if (s.tabs) {
+                return (
+                  <Route
+                    key={s.path}
+                    path={path}
+                    element={
+                      <TabbedSection
+                        basePath={s.path}
+                        tabs={s.tabs}
+                        routesClassName={s.routesClassName}
+                      />
+                    }
+                  />
+                )
+              }
+              if (s.Section) {
+                const Section = s.Section
+                return <Route key={s.path} path={path} element={<Section />} />
+              }
+              return null
+            })}
+          </Routes>
+        </div>
+      </QuickAddProvider>
+    </BrowserRouter>
   )
 }

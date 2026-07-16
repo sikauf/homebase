@@ -36,10 +36,25 @@ describe('auth disabled (AUTH_PASSWORD unset)', () => {
   })
 })
 
+const writeFeat = (init: RequestInit = {}) =>
+  fetch(`${baseUrl()}/api/games/shovelknight/feats`, {
+    method: 'POST',
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init.headers ?? {}) },
+    body: JSON.stringify({ character_id: 'shovel', feat_id: 'victory' }),
+  })
+
 describe('auth enabled', () => {
-  it('rejects API requests without credentials', async () => {
-    assert.equal((await fetch(`${baseUrl()}/api/games/shovelknight/feats`)).status, 401)
+  it('allows reads without credentials', async () => {
+    assert.equal((await fetch(`${baseUrl()}/api/games/shovelknight/feats`)).status, 200)
+  })
+
+  it('reports unauthenticated on /me without credentials', async () => {
     assert.equal((await fetch(`${baseUrl()}/api/auth/me`)).status, 401)
+  })
+
+  it('rejects writes without credentials', async () => {
+    assert.equal((await writeFeat()).status, 401)
   })
 
   it('rejects a wrong password', async () => {
@@ -51,7 +66,7 @@ describe('auth enabled', () => {
     assert.equal((await login(123)).status, 401)
   })
 
-  it('login sets a session cookie that grants access', async () => {
+  it('login sets a session cookie that grants write access', async () => {
     const res = await login(PASSWORD)
     assert.equal(res.status, 200)
     const setCookie = res.headers.get('set-cookie')
@@ -59,10 +74,7 @@ describe('auth enabled', () => {
     assert.ok(setCookie?.includes('HttpOnly'))
 
     const cookie = setCookie!.split(';')[0]
-    const authed = await fetch(`${baseUrl()}/api/games/shovelknight/feats`, {
-      headers: { Cookie: cookie },
-    })
-    assert.equal(authed.status, 200)
+    assert.equal((await writeFeat({ headers: { Cookie: cookie } })).status, 201)
     assert.equal((await fetch(`${baseUrl()}/api/auth/me`, { headers: { Cookie: cookie } })).status, 200)
   })
 
@@ -76,17 +88,13 @@ describe('auth enabled', () => {
     assert.equal(denied.status, 401)
   })
 
-  it('accepts Authorization: Bearer <password>', async () => {
-    const res = await fetch(`${baseUrl()}/api/games/shovelknight/feats`, {
-      headers: { Authorization: `Bearer ${PASSWORD}` },
-    })
-    assert.equal(res.status, 200)
+  it('accepts Authorization: Bearer <password> for writes', async () => {
+    const res = await writeFeat({ headers: { Authorization: `Bearer ${PASSWORD}` } })
+    assert.equal(res.status, 201)
   })
 
-  it('rejects a wrong bearer token', async () => {
-    const res = await fetch(`${baseUrl()}/api/games/shovelknight/feats`, {
-      headers: { Authorization: 'Bearer wrong' },
-    })
+  it('rejects a wrong bearer token on writes', async () => {
+    const res = await writeFeat({ headers: { Authorization: 'Bearer wrong' } })
     assert.equal(res.status, 401)
   })
 })

@@ -1,10 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import crypto from 'node:crypto'
 
-// Single-password auth for remote hosting. When AUTH_PASSWORD is unset
-// (local dev, tests) every request passes through untouched.
-// Browser sessions use a signed HttpOnly cookie; scripts (push-saves,
-// assistant book-rec sessions) send `Authorization: Bearer <AUTH_PASSWORD>`.
+// Single-password auth for remote hosting: reads are public, writes need
+// the password. When AUTH_PASSWORD is unset (local dev, tests) every
+// request passes through untouched. Browser sessions use a signed HttpOnly
+// cookie; scripts (push-saves, assistant book-rec sessions) send
+// `Authorization: Bearer <AUTH_PASSWORD>`.
 
 const COOKIE_NAME = 'homebase_session'
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
@@ -45,8 +46,11 @@ export function isAuthenticated(req: Request): boolean {
   return safeEqual(mac, sign(Number(expiresAt), secret))
 }
 
+const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+// Anyone with the URL can read; mutations require the password.
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (isAuthenticated(req)) {
+  if (READ_METHODS.has(req.method) || isAuthenticated(req)) {
     next()
     return
   }
