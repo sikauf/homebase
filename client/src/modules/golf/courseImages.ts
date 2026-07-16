@@ -29,9 +29,11 @@ const COURSES: CourseImage[] = [
     aliases: ['Man O War', 'Man Of War'],
   },
   {
-    name: 'Bergen Point',
-    image: '/golf/courses/bergen_point.jpg',
-    aliases: ['Bergen Point Golf Course'],
+    name: 'Santapogue Creek Golf Course',
+    image: '/golf/courses/santapogue_creek.jpg',
+    // Renamed from Bergen Point — rounds logged under the old name are still
+    // in the DB, so the old aliases have to keep resolving to this image.
+    aliases: ['Santapogue Creek', 'Santapogue', 'Bergen Point', 'Bergen Point Golf Course'],
   },
   {
     name: 'Crab Meadow',

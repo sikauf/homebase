@@ -99,7 +99,7 @@ export default function AddTeeTimeModal({ onClose, onSubmit }: AddTeeTimeModalPr
               onChange={(e) => setCourse(e.target.value)}
               onFocus={() => setCourseFocused(true)}
               onBlur={() => setTimeout(() => setCourseFocused(false), 150)}
-              placeholder="e.g. Bergen Point"
+              placeholder="e.g. Santapogue Creek"
               autoComplete="off"
               required
               style={inputStyle}

@@ -96,7 +96,7 @@ Live under `client/public/<module>/<subfolder>/` (e.g. `client/public/golf/myrtl
 
 Course images live in `client/public/golf/courses/`, registered in `client/src/modules/golf/courseImages.ts`. The registry powers both `RoundCard`'s banner and `AddRoundModal`'s autocomplete.
 
-**Trigger phrase — "golf course cleanup" (also "golf picture cleanup"):** the user drops new image files in the repo root (e.g. `bergen_point.jpeg`).
+**Trigger phrase — "golf course cleanup" (also "golf picture cleanup"):** the user drops new image files in the repo root (e.g. `montauk_downs.jpeg`).
 
 1. Find loose image files (`.jpg`, `.jpeg`, `.png`, `.webp`) in the repo root.
 2. For each, check if it duplicates an existing course (case-insensitive, punctuation-ignored match against `name` or `aliases`):

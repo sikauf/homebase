@@ -269,11 +269,11 @@ function pastDate(daysAgo: number): string {
 describe('POST /api/golf/tee-times', () => {
   it('creates a tee time and returns it with an id', async () => {
     const date = futureDate(30)
-    const res = await post('/api/golf/tee-times', { course: 'Bergen Point', date })
+    const res = await post('/api/golf/tee-times', { course: 'Santapogue Creek Golf Course', date })
     assert.equal(res.status, 201)
     const body = await res.json() as { id: number; course: string; date: string }
     assert.ok(body.id)
-    assert.equal(body.course, 'Bergen Point')
+    assert.equal(body.course, 'Santapogue Creek Golf Course')
     assert.equal(body.date, date)
   })
 
