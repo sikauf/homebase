@@ -76,6 +76,16 @@ const COURSES: CourseImage[] = [
     objectPosition: '50% 75%',
     aliases: ['Bethpage State Park Red', 'Bethpage Red Course'],
   },
+  {
+    name: 'Bethpage Black',
+    image: '/golf/courses/bethpage_black.jpeg',
+    aliases: ['Bethpage State Park Black', 'Bethpage Black Course'],
+  },
+  {
+    name: 'Brentwood Country Club',
+    image: '/golf/courses/brentwood_country_club.webp',
+    aliases: ['Brentwood', 'Brentwood CC'],
+  },
 ]
 
 function normalize(s: string): string {
