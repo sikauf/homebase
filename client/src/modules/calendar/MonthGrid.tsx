@@ -9,6 +9,7 @@ const MAX_LANES = 3
 const LANE_H = 15   // px per ribbon lane
 const DAYNUM_H = 24 // px reserved for the day number row
 const MAX_DOTS = 6
+const CHIP_H = 13   // px per labeled in-cell chip
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
@@ -78,6 +79,8 @@ export default function MonthGrid({ year, month, today, selected, onSelect, even
             {week.map((iso, di) => {
               if (!iso) return <div key={di} />
               const events = eventsByDate.get(iso) ?? []
+              const chips = events.filter((e) => e.chip)
+              const dots = events.filter((e) => !e.chip)
               const isToday = iso === today
               const isSelected = iso === selected
               const isFuture = iso > today
@@ -107,21 +110,44 @@ export default function MonthGrid({ year, month, today, selected, onSelect, even
                   </span>
                   {/* spacer under the ribbon layer */}
                   <div style={{ height: laneCount * LANE_H }} />
-                  <div className="flex flex-wrap items-center gap-[3px] px-1.5 mt-auto">
-                    {events.slice(0, MAX_DOTS).map((e, ei) => (
+                  <div className="flex flex-col gap-[2px] px-1 mt-auto">
+                    {chips.map((e, ei) => (
                       <span
-                        key={ei}
-                        className="rounded-full"
+                        key={`chip-${ei}`}
+                        className="block truncate"
                         style={{
-                          width: 6,
-                          height: 6,
-                          background: e.future ? 'transparent' : e.color,
-                          border: e.future ? `1.5px solid ${e.color}` : 'none',
+                          fontSize: 9,
+                          lineHeight: `${CHIP_H}px`,
+                          paddingLeft: 4,
+                          paddingRight: 3,
+                          color: 'rgba(255,255,255,0.85)',
+                          background: `color-mix(in srgb, ${e.color} 30%, transparent)`,
+                          borderLeft: `3px solid ${e.color}`,
+                          borderRadius: 6,
                         }}
-                      />
+                      >
+                        <span className="sm:hidden">{e.chip!.short ?? e.chip!.label}</span>
+                        <span className="hidden sm:inline">{e.chip!.label}</span>
+                      </span>
                     ))}
-                    {events.length > MAX_DOTS && (
-                      <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>+{events.length - MAX_DOTS}</span>
+                    {dots.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-[3px] px-0.5">
+                        {dots.slice(0, MAX_DOTS).map((e, ei) => (
+                          <span
+                            key={ei}
+                            className="rounded-full"
+                            style={{
+                              width: 6,
+                              height: 6,
+                              background: e.future ? 'transparent' : e.color,
+                              border: e.future ? `1.5px solid ${e.color}` : 'none',
+                            }}
+                          />
+                        ))}
+                        {dots.length > MAX_DOTS && (
+                          <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>+{dots.length - MAX_DOTS}</span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </button>

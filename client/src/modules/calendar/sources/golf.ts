@@ -27,12 +27,16 @@ const golf: CalendarSource = {
     ])
 
     const events: CalendarEvent[] = [
-      ...rounds.map((r) => ({
-        // played_at is a 'YYYY-MM-DD HH:MM:SS' datetime, not a bare date
-        date: r.played_at.slice(0, 10),
-        label: `${r.course} — ${r.score}`,
-        color: ROUND_COLOR,
-      })),
+      ...rounds.map((r) => {
+        const label = `${r.course} — ${r.score}`
+        return {
+          // played_at is a 'YYYY-MM-DD HH:MM:SS' datetime, not a bare date
+          date: r.played_at.slice(0, 10),
+          label,
+          color: ROUND_COLOR,
+          chip: { label, short: String(r.score) },
+        }
+      }),
       ...rangeDays.flatMap((d) =>
         d.types.map((t) => ({
           date: d.date,

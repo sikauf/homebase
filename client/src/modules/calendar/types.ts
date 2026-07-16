@@ -7,6 +7,10 @@ export interface CalendarEvent {
   label: string  // full text for the day-detail panel, e.g. 'Bethpage Black — 96'
   color: string  // any CSS color
   future?: boolean // scheduled (e.g. tee time) → outlined ring instead of filled dot
+  // Render in the day cell as a labeled chip — styled like a one-day span
+  // ribbon — instead of a dot. `short` is the phone-width form, where the
+  // cell is too narrow for the full label.
+  chip?: { label: string; short?: string }
 }
 
 // Multi-day ribbon (reading a book, golf trip).
