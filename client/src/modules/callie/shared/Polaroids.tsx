@@ -53,7 +53,11 @@ export default function Polaroids({ count = 3 }: { count?: number }) {
   const [photos, setPhotos] = useState<CalliePhoto[]>([])
   const [uploading, setUploading] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [addedCount, setAddedCount] = useState(0)
+  const confirmTimer = useRef<ReturnType<typeof setTimeout>>()
   const fileInput = useRef<HTMLInputElement>(null)
+
+  useEffect(() => () => clearTimeout(confirmTimer.current), [])
 
   useEffect(() => {
     let cancelled = false
@@ -67,6 +71,8 @@ export default function Polaroids({ count = 3 }: { count?: number }) {
     if (!files || files.length === 0 || uploading) return
     setUploading(true)
     setFailed(false)
+    setAddedCount(0)
+    clearTimeout(confirmTimer.current)
     try {
       const added: CalliePhoto[] = []
       for (const file of Array.from(files)) {
@@ -75,6 +81,8 @@ export default function Polaroids({ count = 3 }: { count?: number }) {
       }
       // Newest additions jump straight into the cluster.
       setPhotos((prev) => [...added, ...prev].slice(0, Math.max(count, added.length)))
+      setAddedCount(added.length)
+      confirmTimer.current = setTimeout(() => setAddedCount(0), 5000)
     } catch {
       setFailed(true)
     } finally {
@@ -84,44 +92,54 @@ export default function Polaroids({ count = 3 }: { count?: number }) {
   }
 
   return (
-    <div className="flex items-start -space-x-3 sm:-space-x-2 pr-2">
-      {photos.map((photo, i) => (
-        <div key={photo.name} style={{ zIndex: i }} aria-hidden>
-          <PolaroidFrame tilt={TILTS[i % TILTS.length]} tapeAngle={i % 2 === 0 ? '-2deg' : '3deg'}>
-            <img src={photo.url} alt="" className="block object-cover" style={PHOTO_SIZE} loading="lazy" />
+    <div className="flex flex-col items-end gap-2">
+      <div className="flex items-start -space-x-3 sm:-space-x-2 pr-2">
+        {photos.map((photo, i) => (
+          <div key={photo.name} style={{ zIndex: i }} aria-hidden>
+            <PolaroidFrame tilt={TILTS[i % TILTS.length]} tapeAngle={i % 2 === 0 ? '-2deg' : '3deg'}>
+              <img src={photo.url} alt="" className="block object-cover" style={PHOTO_SIZE} loading="lazy" />
+            </PolaroidFrame>
+          </div>
+        ))}
+        <div style={{ zIndex: photos.length }}>
+          <PolaroidFrame tilt={TILTS[photos.length % TILTS.length]} tapeAngle="2deg">
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={uploading}
+              aria-label="Add photos"
+              title={failed ? 'Upload failed — try again?' : 'Add photos of us'}
+              className="flex flex-col items-center justify-center gap-0.5"
+              style={{
+                ...PHOTO_SIZE,
+                border: `2px dashed ${failed ? '#f08080' : callieTheme.pinkSoft}`,
+                borderRadius: '2px',
+                background: '#fdf2f8',
+                color: callieTheme.pinkText,
+              }}
+            >
+              <span className="text-xl leading-none">{uploading ? '⏳' : '+'}</span>
+              <span className="text-[9px] font-medium">{uploading ? 'saving…' : failed ? 'try again' : 'add pics'}</span>
+            </button>
           </PolaroidFrame>
         </div>
-      ))}
-      <div style={{ zIndex: photos.length }}>
-        <PolaroidFrame tilt={TILTS[photos.length % TILTS.length]} tapeAngle="2deg">
-          <button
-            type="button"
-            onClick={() => fileInput.current?.click()}
-            disabled={uploading}
-            aria-label="Add photos"
-            title={failed ? 'Upload failed — try again?' : 'Add photos of us'}
-            className="flex flex-col items-center justify-center gap-0.5"
-            style={{
-              ...PHOTO_SIZE,
-              border: `2px dashed ${failed ? '#f08080' : callieTheme.pinkSoft}`,
-              borderRadius: '2px',
-              background: '#fdf2f8',
-              color: callieTheme.pinkText,
-            }}
-          >
-            <span className="text-xl leading-none">{uploading ? '⏳' : '+'}</span>
-            <span className="text-[9px] font-medium">{uploading ? 'saving…' : failed ? 'try again' : 'add pics'}</span>
-          </button>
-        </PolaroidFrame>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => onPick(e.target.files)}
+        />
       </div>
-      <input
-        ref={fileInput}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={(e) => onPick(e.target.files)}
-      />
+      {addedCount > 0 && (
+        <span
+          className="text-[11px] rounded-full px-2.5 py-1 font-medium"
+          style={callieTheme.greenChip}
+        >
+          ✓ {addedCount} photo{addedCount === 1 ? '' : 's'} added to the collection
+        </span>
+      )}
     </div>
   )
 }
