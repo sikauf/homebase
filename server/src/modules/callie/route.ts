@@ -38,8 +38,9 @@ router.get('/moods', (_req: Request, res: Response) => {
 })
 
 router.post('/moods', (req: Request, res: Response) => {
+  // `mood` may be a single value or a comma-joined list ("happy,excited").
   const { mood } = req.body ?? {}
-  if (typeof mood !== 'string' || mood.trim() === '' || mood.length > 60) {
+  if (typeof mood !== 'string' || mood.trim() === '' || mood.length > 200) {
     res.status(400).json({ error: 'mood is required' })
     return
   }

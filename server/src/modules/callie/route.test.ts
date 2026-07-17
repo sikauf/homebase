@@ -139,6 +139,19 @@ describe('moods', () => {
     assert.equal((await post({})).status, 400)
     assert.equal((await post({ mood: '  ' })).status, 400)
     assert.equal((await post({ mood: 42 })).status, 400)
+    assert.equal((await post({ mood: 'x'.repeat(201) })).status, 400)
+  })
+
+  it('accepts a comma-joined multi-mood entry', async () => {
+    const cookie = await loginCookie(CALLIE_PASSWORD)
+    const created = await json(
+      await api('/moods', {
+        method: 'POST',
+        headers: { Cookie: cookie },
+        body: JSON.stringify({ mood: 'happy,excited,silly' }),
+      })
+    )
+    assert.equal(created.mood, 'happy,excited,silly')
   })
 
   it('lists newest first and deletes', async () => {

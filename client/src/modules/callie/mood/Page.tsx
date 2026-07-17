@@ -7,7 +7,7 @@ import { MOOD_PRESETS, moodMeta, dayLabel, timeLabel } from './data'
 export default function MoodPage() {
   const [moods, setMoods] = useState<CallieMood[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string[]>([])
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -18,13 +18,19 @@ export default function MoodPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  function toggle(value: string) {
+    setSelected((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    )
+  }
+
   async function logMood() {
-    if (!selected || saving) return
+    if (selected.length === 0 || saving) return
     setSaving(true)
     try {
-      const created = await createMood(selected, note.trim() || undefined)
+      const created = await createMood(selected.join(','), note.trim() || undefined)
       setMoods((prev) => [created, ...prev])
-      setSelected(null)
+      setSelected([])
       setNote('')
     } catch {
       // leave the form as-is so nothing typed is lost
@@ -55,12 +61,12 @@ export default function MoodPage() {
       <div className="rounded-2xl p-4 sm:p-6 mb-6" style={callieTheme.card}>
         <div className="flex flex-wrap gap-2">
           {MOOD_PRESETS.map((preset) => {
-            const active = selected === preset.value
+            const active = selected.includes(preset.value)
             return (
               <button
                 key={preset.value}
                 type="button"
-                onClick={() => setSelected(active ? null : preset.value)}
+                onClick={() => toggle(preset.value)}
                 className="rounded-full px-3.5 py-2 text-sm font-medium transition-transform hover:scale-105"
                 style={
                   active
@@ -87,7 +93,7 @@ export default function MoodPage() {
           <button
             type="button"
             onClick={logMood}
-            disabled={!selected || saving}
+            disabled={selected.length === 0 || saving}
             className="rounded-full px-6 py-2 text-sm font-semibold text-white disabled:opacity-40 transition-transform enabled:hover:scale-105"
             style={{ background: callieTheme.green }}
           >
@@ -114,7 +120,7 @@ export default function MoodPage() {
               </h2>
               <div className="space-y-2">
                 {group.entries.map((entry) => {
-                  const meta = moodMeta(entry.mood)
+                  const metas = entry.mood.split(',').map(moodMeta)
                   const chip = addedByChip(entry.added_by)
                   return (
                     <div
@@ -122,11 +128,13 @@ export default function MoodPage() {
                       className="group rounded-2xl px-4 py-3 flex items-center gap-3"
                       style={callieTheme.card}
                     >
-                      <span className="text-2xl leading-none">{meta.emoji}</span>
+                      <span className="text-2xl leading-none whitespace-nowrap">
+                        {metas.map((m) => m.emoji).join('')}
+                      </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold" style={{ color: callieTheme.pinkText }}>
-                            {meta.label}
+                            {metas.map((m) => m.label).join(' · ')}
                           </span>
                           <span className="text-[11px] rounded-full px-2 py-0.5 font-medium" style={chip.style}>
                             {chip.label}
