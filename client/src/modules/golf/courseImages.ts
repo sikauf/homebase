@@ -88,6 +88,11 @@ const COURSES: CourseImage[] = [
     image: '/golf/courses/brentwood_country_club.webp',
     aliases: ['Brentwood', 'Brentwood CC'],
   },
+  {
+    name: 'TPC River Highlands',
+    image: '/golf/courses/tpc_river_highlands.jpeg',
+    aliases: ['River Highlands', 'TPC River Highlands Golf Course'],
+  },
 ]
 
 function normalize(s: string): string {
