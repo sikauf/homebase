@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { fetchJSON } from './shared'
 import JournalModal, { type JournalBook } from './JournalModal'
 
-interface CompletedBook {
+export interface CompletedBook {
   book_id: number
   title: string
   author: string | null
@@ -24,8 +24,8 @@ const COVER_H = 66
 const BAR_W = 8            // duration "pill" width behind the cover
 const PX_PER_DAY = 7       // vertical scale: 1 day of reading = 7px of bar
 const MIN_BAR_H = 60       // floor so short reads stay legible
-const CARD_MIN_H = 78      // vertical footprint reserved for the text block
-const CARD_GAP = 18        // min gap between two cards stacked in one lane
+export const CARD_MIN_H = 78   // vertical footprint reserved for the text block
+export const CARD_GAP = 18     // min gap between two cards stacked in one lane
 const GAP_THRESHOLD_DAYS = 12   // idle gaps longer than this get compressed
 const GAP_FIXED_PX = 64
 
@@ -57,7 +57,7 @@ function fmtRange(startT: number, finishT: number): string {
 interface Seg { type: 'active' | 'gap'; t0: number; t1: number; y0: number; y1: number; days: number }
 interface Scale { segs: Seg[]; minT: number; maxT: number; totalH: number }
 
-interface Span {
+export interface Span {
   book: CompletedBook
   startT: number
   finishT: number
@@ -122,14 +122,42 @@ function dateToY(scale: Scale, t: number): number {
   return segs[segs.length - 1].y1
 }
 
-// --- Lane packing (interval partitioning) -----------------------------------
-interface Placed extends Span {
+// --- Lane packing + stretched scale ------------------------------------------
+// Cards sit at their date's y, but a run of quick finishes needs more vertical
+// room than its days occupy (every card reserves at least CARD_MIN_H). Nudging
+// a colliding card down within its own lane would shear that lane away from the
+// axis and the other lanes — April ends up rendered beside February. Instead
+// the extra pixels are inserted into the *time scale itself* at that date, so
+// month markers, gap bands, and every lane shift down together and a horizontal
+// line through the chart always crosses a single date.
+
+interface Stretch { t: number; extra: number }
+
+function offsetAt(stretches: Stretch[], t: number): number {
+  let sum = 0
+  for (const s of stretches) if (s.t <= t) sum += s.extra
+  return sum
+}
+// A bar that ends exactly where a stretch was inserted must not absorb it: the
+// wedge belongs to the card starting at that date, not the bar finishing there.
+function offsetBefore(stretches: Stretch[], t: number): number {
+  let sum = 0
+  for (const s of stretches) if (s.t < t) sum += s.extra
+  return sum
+}
+
+export interface Placed extends Span {
   lane: number
   top: number
   barH: number
 }
 
-function layout(spans: Span[], scale: Scale): { placed: Placed[]; numLanes: number; height: number } {
+function layout(spans: Span[], scale: Scale): {
+  placed: Placed[]
+  numLanes: number
+  height: number
+  stretches: Stretch[]
+} {
   const sorted = [...spans].sort((a, b) => a.startT - b.startT || a.finishT - b.finishT)
 
   // Greedy: first lane whose previous book has already finished. Two books read
@@ -142,35 +170,53 @@ function layout(spans: Span[], scale: Scale): { placed: Placed[]; numLanes: numb
     return { span, lane }
   })
 
-  // Place by date, then nudge down within a lane only if two cards would collide
-  // (rare — books are usually days apart). The "N days" / date labels carry the
-  // exact timing, so a small nudge never misleads.
+  const stretches: Stretch[] = []
+  const topOf = (span: Span) => dateToY(scale, span.startT) + offsetAt(stretches, span.startT)
+  const barHOf = (span: Span, top: number) => span.hasDuration
+    ? Math.max(dateToY(scale, span.finishT) + offsetBefore(stretches, span.finishT) - top, MIN_BAR_H)
+    : COVER_H
+
+  // Pass 1 — walk cards in start order and record where a lane needs more room
+  // than the date scale provides.
   const laneBottoms: number[] = []
+  for (const { span, lane } of withLanes) {
+    let top = topOf(span)
+    const minTop = (laneBottoms[lane] ?? -Infinity) + CARD_GAP
+    if (top < minTop) {
+      stretches.push({ t: span.startT, extra: minTop - top })
+      top = minTop
+    }
+    laneBottoms[lane] = top + Math.max(barHOf(span, top), CARD_MIN_H)
+  }
+
+  // Pass 2 — place everything against the fully stretched scale. (A stretch
+  // recorded later in pass 1 can shift a card placed earlier, so positions are
+  // recomputed; the lane-spacing guarantees survive because a stretch always
+  // moves a card's top at least as far as it moves the card above it.)
+  const bottoms: number[] = []
   const placed: Placed[] = withLanes.map(({ span, lane }) => {
-    const scaleTop = dateToY(scale, span.startT)
-    const barH = span.hasDuration
-      ? Math.max(dateToY(scale, span.finishT) - scaleTop, MIN_BAR_H)
-      : COVER_H
-    const top = Math.max(scaleTop, (laneBottoms[lane] ?? -Infinity) + CARD_GAP)
-    laneBottoms[lane] = top + Math.max(barH, CARD_MIN_H)
+    const top = topOf(span)
+    const barH = barHOf(span, top)
+    bottoms.push(top + Math.max(barH, CARD_MIN_H))
     return { ...span, lane, top, barH }
   })
 
   const numLanes = laneEnds.length || 1
-  const height = Math.max(scale.totalH, ...laneBottoms, 0) + 40
-  return { placed, numLanes, height }
+  const maxY = dateToY(scale, scale.maxT) + offsetAt(stretches, scale.maxT)
+  const height = Math.max(maxY, ...bottoms, 0) + 40
+  return { placed, numLanes, height, stretches }
 }
 
 // --- Axis markers -----------------------------------------------------------
-interface Marker { y: number; label: string; year: boolean }
+export interface Marker { y: number; label: string; year: boolean }
 
-function buildMarkers(scale: Scale): Marker[] {
+function buildMarkers(scale: Scale, yAt: (t: number) => number): Marker[] {
   const start = new Date(scale.minT)
   const markers: Marker[] = []
   const cursor = new Date(start.getFullYear(), start.getMonth(), 1)
   let lastY = -Infinity
   while (cursor.getTime() <= scale.maxT) {
-    const y = dateToY(scale, cursor.getTime())
+    const y = yAt(cursor.getTime())
     if (y - lastY >= 18) {
       const isJan = cursor.getMonth() === 0
       markers.push({
@@ -187,6 +233,30 @@ function buildMarkers(scale: Scale): Marker[] {
     markers[0] = { ...markers[0], label: `${markers[0].label} ${start.getFullYear()}`, year: true }
   }
   return markers
+}
+
+// --- Full chart geometry ------------------------------------------------------
+// Pure function so the alignment invariants are unit-testable: every card top
+// equals yAt(its start date), across all lanes, and markers use the same yAt.
+export interface TimelineLayout {
+  placed: Placed[]
+  numLanes: number
+  height: number
+  markers: Marker[]
+  gaps: { y0: number; y1: number; days: number }[]
+  yAt: (t: number) => number
+}
+
+export function computeTimeline(books: CompletedBook[]): TimelineLayout | null {
+  const spans = buildSpans(books)
+  if (!spans.length) return null
+  const scale = buildScale(spans)
+  const { placed, numLanes, height, stretches } = layout(spans, scale)
+  const yAt = (t: number) => dateToY(scale, t) + offsetAt(stretches, t)
+  const gaps = scale.segs
+    .filter((s) => s.type === 'gap')
+    .map((s) => ({ y0: yAt(s.t0), y1: yAt(s.t1), days: s.days }))
+  return { placed, numLanes, height, markers: buildMarkers(scale, yAt), gaps, yAt }
 }
 
 // --- Book card --------------------------------------------------------------
@@ -389,12 +459,9 @@ function MobileList({ books, onOpen }: { books: CompletedBook[]; onOpen: (b: Com
 function Chart({ books, onOpen }: { books: CompletedBook[]; onOpen: (b: CompletedBook) => void }) {
   const [hovered, setHovered] = useState<number | null>(null)
 
-  const { placed, numLanes, height, markers, segs } = useMemo(() => {
-    const spans = buildSpans(books)
-    const scale = buildScale(spans)
-    const { placed, numLanes, height } = layout(spans, scale)
-    return { placed, numLanes, height, markers: buildMarkers(scale), segs: scale.segs }
-  }, [books])
+  const chart = useMemo(() => computeTimeline(books), [books])
+  if (!chart) return null
+  const { placed, numLanes, height, markers, gaps } = chart
 
   const chartWidth = AXIS_W + numLanes * LANE_W + (numLanes - 1) * LANE_GAP
 
@@ -408,12 +475,14 @@ function Chart({ books, onOpen }: { books: CompletedBook[]; onOpen: (b: Complete
         />
 
         {/* Compressed-gap breaks */}
-        {segs.filter((s) => s.type === 'gap').map((s, i) => (
+        {gaps.map((s, i) => (
           <div key={`gap-${i}`} className="absolute flex items-center" style={{ left: AXIS_W - 1, top: s.y0, height: s.y1 - s.y0, width: 120 }}>
             <div className="h-full" style={{ width: 1, borderLeft: '1px dashed rgba(255,255,255,0.12)' }} />
-            <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.22)', marginLeft: 8, fontFamily: "'Kreon', serif", whiteSpace: 'nowrap' }}>
-              {s.days >= 14 ? `${Math.round(s.days / 7)} wks` : `${s.days} days`}
-            </span>
+            {s.y1 - s.y0 >= 16 && (
+              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.22)', marginLeft: 8, fontFamily: "'Kreon', serif", whiteSpace: 'nowrap' }}>
+                {s.days >= 14 ? `${Math.round(s.days / 7)} wks` : `${s.days} ${s.days === 1 ? 'day' : 'days'}`}
+              </span>
+            )}
           </div>
         ))}
 
