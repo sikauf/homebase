@@ -12,6 +12,9 @@ vi.mock('../modules/books/Shelf', () => ({
 vi.mock('../modules/books/Completed', () => ({
   default: () => <div data-testid="completed-panel" />,
 }))
+vi.mock('../modules/books/parallels/Page', () => ({
+  default: () => <div data-testid="parallels-panel" />,
+}))
 
 function renderAt(path: string) {
   return render(
@@ -67,6 +70,16 @@ describe('Books tab navigation', () => {
   it('renders the completed panel at /books/completed', () => {
     renderAt('/books/completed')
     expect(screen.getByTestId('completed-panel')).toBeInTheDocument()
+  })
+
+  it('renders a Parallels tab linking to /books/parallels', () => {
+    renderAt('/books/currently-reading')
+    expect(screen.getByRole('link', { name: 'Parallels' })).toHaveAttribute('href', '/books/parallels')
+  })
+
+  it('renders the parallels panel at /books/parallels', () => {
+    renderAt('/books/parallels')
+    expect(screen.getByTestId('parallels-panel')).toBeInTheDocument()
   })
 
   it('redirects /books to /books/currently-reading', () => {

@@ -1041,3 +1041,194 @@ describe('GET /api/books/reading-progress', () => {
     }
   })
 })
+
+// ---- Parallels --------------------------------------------------------------
+// Pure SQLite — no Hardcover mock needed. cover_url stays null everywhere so
+// accent extraction never fetches. The DB is shared across this file, so tests
+// use distinct book ids, filter GET results to their own rows, and clean up.
+
+interface ParallelRecord {
+  id: number
+  book_a_id: number
+  book_b_id: number
+  note: string
+  created_at: string
+}
+
+interface ParallelsPayload {
+  books: { book_id: number; title: string; author: string | null; cover_url: string | null; accent_rgb: string | null }[]
+  parallels: ParallelRecord[]
+}
+
+const pBook = (book_id: number, title: string) => ({ book_id, title, author: 'An Author', cover_url: null })
+
+function postParallel(body: unknown) {
+  return realFetch(`${baseUrl()}/api/books/parallels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+const deleteParallel = (id: number) =>
+  realFetch(`${baseUrl()}/api/books/parallels/${id}`, { method: 'DELETE' })
+
+describe('POST /api/books/parallels', () => {
+  it('creates a parallel and returns the stored row with a trimmed note', async () => {
+    const res = await postParallel({ book_a: pBook(301, 'Book A'), book_b: pBook(302, 'Book B'), note: '  Both haunt their narrators.  ' })
+    assert.equal(res.status, 201)
+    const body = await res.json() as ParallelRecord
+    try {
+      assert.ok(Number.isInteger(body.id))
+      assert.equal(body.book_a_id, 301)
+      assert.equal(body.book_b_id, 302)
+      assert.equal(body.note, 'Both haunt their narrators.', 'note should be trimmed')
+      assert.ok(body.created_at)
+    } finally {
+      await deleteParallel(body.id)
+    }
+  })
+
+  it('stores the smaller book id as book_a regardless of input order', async () => {
+    const res = await postParallel({ book_a: pBook(402, 'Higher Id'), book_b: pBook(401, 'Lower Id'), note: 'swap me' })
+    assert.equal(res.status, 201)
+    const body = await res.json() as ParallelRecord
+    try {
+      assert.equal(body.book_a_id, 401)
+      assert.equal(body.book_b_id, 402)
+    } finally {
+      await deleteParallel(body.id)
+    }
+  })
+
+  it('rejects the same book on both sides', async () => {
+    const res = await postParallel({ book_a: pBook(7, 'Same'), book_b: pBook(7, 'Same'), note: 'nope' })
+    assert.equal(res.status, 400)
+  })
+
+  it('rejects a missing or blank note', async () => {
+    const blank = await postParallel({ book_a: pBook(1, 'A'), book_b: pBook(2, 'B'), note: '   ' })
+    assert.equal(blank.status, 400)
+    const missing = await postParallel({ book_a: pBook(1, 'A'), book_b: pBook(2, 'B') })
+    assert.equal(missing.status, 400)
+  })
+
+  it('rejects malformed books', async () => {
+    const noB = await postParallel({ book_a: pBook(1, 'A'), note: 'n' })
+    assert.equal(noB.status, 400)
+    const badId = await postParallel({ book_a: pBook(1, 'A'), book_b: { book_id: 'x', title: 'B' }, note: 'n' })
+    assert.equal(badId.status, 400)
+    const noTitle = await postParallel({ book_a: pBook(1, 'A'), book_b: { book_id: 2, title: '  ' }, note: 'n' })
+    assert.equal(noTitle.status, 400)
+  })
+})
+
+describe('GET /api/books/parallels', () => {
+  it('returns deduped nodes and every parallel, including repeats on one pair', async () => {
+    const ids: number[] = []
+    const track = async (res: Response) => { ids.push(((await res.json()) as ParallelRecord).id) }
+    try {
+      await track(await postParallel({ book_a: pBook(501, 'Node A'), book_b: pBook(502, 'Node B'), note: 'first' }))
+      await track(await postParallel({ book_a: pBook(501, 'Node A'), book_b: pBook(503, 'Node C'), note: 'second' }))
+      await track(await postParallel({ book_a: pBook(501, 'Node A'), book_b: pBook(502, 'Node B'), note: 'third' }))
+
+      const res = await realFetch(`${baseUrl()}/api/books/parallels`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as ParallelsPayload
+
+      const mine = body.parallels.filter((p) => ids.includes(p.id))
+      assert.equal(mine.length, 3, 'both parallels on the same pair are kept')
+
+      const nodeIds = body.books.map((b) => b.book_id).filter((id) => [501, 502, 503].includes(id))
+      assert.deepEqual([...nodeIds].sort(), [501, 502, 503], 'each book appears exactly once')
+
+      const nodeA = body.books.find((b) => b.book_id === 501)!
+      assert.equal(nodeA.title, 'Node A')
+      assert.equal(nodeA.author, 'An Author')
+      assert.equal(nodeA.cover_url, null)
+      assert.equal(nodeA.accent_rgb, null)
+    } finally {
+      for (const id of ids) await deleteParallel(id)
+    }
+  })
+})
+
+describe('DELETE /api/books/parallels/:id', () => {
+  it('deletes the parallel and drops now-orphaned books from the node list', async () => {
+    const created = await postParallel({ book_a: pBook(601, 'Orphan A'), book_b: pBook(602, 'Orphan B'), note: 'temp' })
+    const { id } = await created.json() as ParallelRecord
+
+    const del = await deleteParallel(id)
+    assert.equal(del.status, 204)
+
+    const res = await realFetch(`${baseUrl()}/api/books/parallels`)
+    const body = await res.json() as ParallelsPayload
+    assert.ok(!body.parallels.some((p) => p.id === id))
+    assert.ok(!body.books.some((b) => b.book_id === 601 || b.book_id === 602))
+  })
+
+  it('returns 404 for an unknown id', async () => {
+    const res = await deleteParallel(9999999)
+    assert.equal(res.status, 404)
+  })
+
+  it('returns 400 for a non-numeric id', async () => {
+    const res = await realFetch(`${baseUrl()}/api/books/parallels/abc`, { method: 'DELETE' })
+    assert.equal(res.status, 400)
+  })
+})
+
+describe('GET /api/books/library', () => {
+  it('returns 503 when HARDCOVER_API_TOKEN is not set', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    delete process.env.HARDCOVER_API_TOKEN
+    const res = await realFetch(`${baseUrl()}/api/books/library`)
+    assert.equal(res.status, 503)
+    process.env.HARDCOVER_API_TOKEN = orig
+  })
+
+  it('returns every logged book deduped and sorted by title', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({
+      data: {
+        me: [{
+          user_books: [
+            { book: { id: 42, title: 'Zebra Book', image: null, contributions: [{ author: { name: 'Z Author' } }] } },
+            { book: { id: 43, title: 'Aardvark Book', image: { url: 'https://covers.example/43.jpg' }, contributions: [] } },
+            { book: { id: 42, title: 'Zebra Book', image: null, contributions: [{ author: { name: 'Z Author' } }] } },
+          ],
+        }],
+      },
+    })
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/library`)
+      assert.equal(res.status, 200)
+      const body = await res.json() as Record<string, unknown>[]
+      assert.equal(body.length, 2, 'duplicate book ids are deduped')
+      assert.equal(body[0].title, 'Aardvark Book')
+      assert.equal(body[0].cover_url, 'https://covers.example/43.jpg')
+      assert.equal(body[0].author, null)
+      assert.equal(body[1].book_id, 42)
+      assert.equal(body[1].author, 'Z Author')
+      assert.equal(body[1].cover_url, null)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('returns 502 when Hardcover API returns errors', async () => {
+    const orig = process.env.HARDCOVER_API_TOKEN
+    process.env.HARDCOVER_API_TOKEN = 'test-token'
+    mockHardcover({ errors: [{ message: 'Unauthorized' }] })
+    try {
+      const res = await realFetch(`${baseUrl()}/api/books/library`)
+      assert.equal(res.status, 502)
+    } finally {
+      process.env.HARDCOVER_API_TOKEN = orig
+      globalThis.fetch = realFetch
+    }
+  })
+})
+

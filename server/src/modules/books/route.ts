@@ -874,4 +874,175 @@ router.delete('/recommendations/:id', (req: Request, res: Response) => {
   res.status(204).end()
 })
 
+// ---- Library (every logged book, for pickers) -------------------------------
+// LIBRARY_QUERY above serves the recommendations flow and carries no covers;
+// this variant fetches what a book picker needs and nothing else.
+
+const LIBRARY_BOOKS_QUERY = `{
+  me {
+    user_books {
+      book {
+        id
+        title
+        image { url }
+        contributions { author { name } }
+      }
+    }
+  }
+}`
+
+interface RawPickerBook {
+  book: {
+    id: number
+    title: string
+    image: { url: string } | null
+    contributions: { author: { name: string } }[]
+  } | null
+}
+
+router.get('/library', async (_req: Request, res: Response) => {
+  const token = process.env.HARDCOVER_API_TOKEN
+  if (!token) { res.status(503).json({ error: 'HARDCOVER_API_TOKEN not configured' }); return }
+
+  const cached = hitCache('library-books')
+  if (cached) { res.json(cached); return }
+
+  let data: { data?: { me?: { user_books: RawPickerBook[] }[] }; errors?: { message: string }[] }
+  try {
+    data = await hardcoverQuery(token, LIBRARY_BOOKS_QUERY)
+  } catch {
+    res.status(503).json({ error: 'Failed to reach Hardcover API' }); return
+  }
+
+  if (data.errors?.length) { res.status(502).json({ error: data.errors[0].message }); return }
+
+  const byId = new Map<number, { book_id: number; title: string; author: string | null; cover_url: string | null }>()
+  for (const ub of data.data?.me?.[0]?.user_books ?? []) {
+    if (!ub.book || byId.has(ub.book.id)) continue
+    byId.set(ub.book.id, {
+      book_id: ub.book.id,
+      title: ub.book.title,
+      author: ub.book.contributions[0]?.author.name ?? null,
+      cover_url: ub.book.image?.url ?? null,
+    })
+  }
+  const books = [...byId.values()].sort((a, b) => a.title.localeCompare(b.title))
+
+  setCache('library-books', books)
+  res.json(books)
+})
+
+// ---- Parallels --------------------------------------------------------------
+// A parallel links exactly two books with a free-text note; the graph tab
+// derives edge weight from how many parallels share a pair. Rows snapshot both
+// books' metadata so reads never touch Hardcover, and store the smaller book id
+// as book_a so a pair is a canonical key.
+
+const SELECT_PARALLELS = db.prepare(
+  `SELECT id, book_a_id, book_a_title, book_a_author, book_a_cover_url,
+          book_b_id, book_b_title, book_b_author, book_b_cover_url,
+          note, created_at
+   FROM book_parallel ORDER BY created_at DESC, id DESC`
+)
+const INSERT_PARALLEL = db.prepare(
+  `INSERT INTO book_parallel (book_a_id, book_a_title, book_a_author, book_a_cover_url,
+                              book_b_id, book_b_title, book_b_author, book_b_cover_url, note)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+)
+const SELECT_PARALLEL_BY_ROWID = db.prepare(
+  'SELECT id, book_a_id, book_b_id, note, created_at FROM book_parallel WHERE rowid = ?'
+)
+const DELETE_PARALLEL = db.prepare('DELETE FROM book_parallel WHERE id = ?')
+
+interface ParallelRow {
+  id: number
+  book_a_id: number
+  book_a_title: string
+  book_a_author: string | null
+  book_a_cover_url: string | null
+  book_b_id: number
+  book_b_title: string
+  book_b_author: string | null
+  book_b_cover_url: string | null
+  note: string
+  created_at: string
+}
+
+interface ParallelBookInput {
+  book_id: number
+  title: string
+  author: string | null
+  cover_url: string | null
+}
+
+function parseParallelBook(raw: unknown): ParallelBookInput | null {
+  if (!raw || typeof raw !== 'object') return null
+  const b = raw as Record<string, unknown>
+  if (!Number.isInteger(b.book_id) || (b.book_id as number) <= 0) return null
+  if (typeof b.title !== 'string' || !b.title.trim()) return null
+  return {
+    book_id: b.book_id as number,
+    title: b.title.trim(),
+    author: typeof b.author === 'string' && b.author.trim() ? b.author.trim() : null,
+    cover_url: typeof b.cover_url === 'string' && b.cover_url ? b.cover_url : null,
+  }
+}
+
+router.get('/parallels', async (_req: Request, res: Response) => {
+  const rows = SELECT_PARALLELS.all() as unknown as ParallelRow[]
+
+  // Node list: every distinct book across both endpoints. Rows arrive
+  // newest-first, so a book's first sighting carries its freshest snapshot.
+  const byId = new Map<number, { book_id: number; title: string; author: string | null; cover_url: string | null }>()
+  for (const r of rows) {
+    if (!byId.has(r.book_a_id)) {
+      byId.set(r.book_a_id, { book_id: r.book_a_id, title: r.book_a_title, author: r.book_a_author, cover_url: r.book_a_cover_url })
+    }
+    if (!byId.has(r.book_b_id)) {
+      byId.set(r.book_b_id, { book_id: r.book_b_id, title: r.book_b_title, author: r.book_b_author, cover_url: r.book_b_cover_url })
+    }
+  }
+  const books = await Promise.all([...byId.values()].map(async (b) => ({
+    ...b,
+    accent_rgb: b.cover_url ? await getAccentRgb(b.cover_url) : null,
+  })))
+
+  res.json({
+    books,
+    parallels: rows.map((r) => ({
+      id: r.id,
+      book_a_id: r.book_a_id,
+      book_b_id: r.book_b_id,
+      note: r.note,
+      created_at: r.created_at,
+    })),
+  })
+})
+
+router.post('/parallels', (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as { book_a?: unknown; book_b?: unknown; note?: unknown }
+  const a = parseParallelBook(body.book_a)
+  const b = parseParallelBook(body.book_b)
+  if (!a || !b) { res.status(400).json({ error: 'book_a and book_b must each have a book_id and title' }); return }
+  if (a.book_id === b.book_id) { res.status(400).json({ error: 'A parallel needs two different books' }); return }
+  const note = typeof body.note === 'string' ? body.note.trim() : ''
+  if (!note) { res.status(400).json({ error: 'note required' }); return }
+
+  const [first, second] = a.book_id < b.book_id ? [a, b] : [b, a]
+  const result = INSERT_PARALLEL.run(
+    first.book_id, first.title, first.author, first.cover_url,
+    second.book_id, second.title, second.author, second.cover_url,
+    note,
+  )
+  res.status(201).json(SELECT_PARALLEL_BY_ROWID.get(result.lastInsertRowid))
+})
+
+router.delete('/parallels/:id', (req: Request, res: Response) => {
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: 'Invalid id' }); return }
+  const result = DELETE_PARALLEL.run(id)
+  if (result.changes === 0) { res.status(404).json({ error: 'Parallel not found' }); return }
+  res.status(204).end()
+})
+
 export default router

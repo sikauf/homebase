@@ -72,4 +72,26 @@ export const migrations: Migration[] = [
       created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     )`,
   },
+  {
+    // A "parallel" links exactly two books with a free-text note. Book metadata
+    // is snapshotted per row (like book_recommendation) so the graph renders
+    // without Hardcover and survives books leaving the library. Rows store the
+    // smaller book id as book_a so a pair is a canonical key; the strict CHECK
+    // also rejects self-links.
+    id: 'book_parallel_v1',
+    up: `CREATE TABLE IF NOT EXISTS book_parallel (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      book_a_id        INTEGER NOT NULL,
+      book_a_title     TEXT    NOT NULL,
+      book_a_author    TEXT,
+      book_a_cover_url TEXT,
+      book_b_id        INTEGER NOT NULL,
+      book_b_title     TEXT    NOT NULL,
+      book_b_author    TEXT,
+      book_b_cover_url TEXT,
+      note             TEXT    NOT NULL,
+      created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+      CHECK (book_a_id < book_b_id)
+    )`,
+  },
 ]
