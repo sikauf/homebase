@@ -1,11 +1,12 @@
 import { useSyncExternalStore } from 'react'
 
 // Shared client-side auth state. One /api/auth/me check per page load, shared
-// by the "Are you Sam?" prompt, Sam-only sections (clean), and the calendar's
-// auth-gated sources. In local dev (no AUTH_PASSWORD) /me returns 200, so
+// by the "Are you Sam?" / "Are you Callie?" prompts, Sam-only sections
+// (clean), the couple-only Callie section, and the calendar's auth-gated
+// sources. In local dev (no AUTH_PASSWORD) /me returns 200 as sam, so
 // everything behaves as Sam.
 
-export type AuthState = 'checking' | 'anon' | 'sam'
+export type AuthState = 'checking' | 'anon' | 'sam' | 'callie'
 
 let state: AuthState = 'checking'
 let started = false
@@ -20,7 +21,14 @@ function ensureCheck() {
   if (started) return
   started = true
   fetch('/api/auth/me')
-    .then((res) => setAuthState(res.ok ? 'sam' : 'anon'))
+    .then(async (res) => {
+      if (!res.ok) {
+        setAuthState('anon')
+        return
+      }
+      const body = await res.json().catch(() => ({}))
+      setAuthState(body.role === 'callie' ? 'callie' : 'sam')
+    })
     .catch(() => setAuthState('anon'))
 }
 
@@ -36,4 +44,14 @@ export function useAuthState(): AuthState {
 
 export function useIsSam(): boolean {
   return useAuthState() === 'sam'
+}
+
+export function useIsCallie(): boolean {
+  return useAuthState() === 'callie'
+}
+
+/** Sam or Callie — the gate for the couple-only Callie section. */
+export function useIsCouple(): boolean {
+  const s = useAuthState()
+  return s === 'sam' || s === 'callie'
 }

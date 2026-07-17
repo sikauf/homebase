@@ -6,5 +6,6 @@ import books from './books'
 import games from './games'
 import backlog from './backlog'
 import exportModule from './export'
+import callie from './callie'
 
-export const modules: ServerModule[] = [golf, clean, fitness, books, games, backlog, exportModule]
+export const modules: ServerModule[] = [golf, clean, fitness, books, games, backlog, exportModule, callie]

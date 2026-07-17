@@ -1,5 +1,6 @@
 import { NavLink, Link } from 'react-router-dom'
 import AreYouSam from './AreYouSam'
+import AreYouCallie from './AreYouCallie'
 import { useIsSam } from '../../auth'
 import { useCleanVisible } from '../../hooks/useCleanVisible'
 import { sections } from '../../modules/registry'
@@ -63,6 +64,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         {sections.map((s) => <NavEntry key={s.path} section={s} onNavigate={onNavigate} />)}
       </nav>
       <AreYouSam />
+      <AreYouCallie />
       <div className="px-6 py-4 border-t border-gray-800 flex items-center justify-between">
         <p className="text-gray-600 text-xs">v0.1.0</p>
         {isSam && (

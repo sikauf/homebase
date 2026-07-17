@@ -82,10 +82,22 @@ describe('auth enabled', () => {
     const res = await login(PASSWORD)
     const cookie = res.headers.get('set-cookie')!.split(';')[0]
     const [name, value] = cookie.split('=')
-    const [expiresAt] = value.split('.')
-    const forged = `${name}=${Number(expiresAt) + 1000}.${value.split('.')[1]}`
+    const [role, expiresAt, mac] = value.split('.')
+    const forged = `${name}=${role}.${Number(expiresAt) + 1000}.${mac}`
     const denied = await fetch(`${baseUrl()}/api/auth/me`, { headers: { Cookie: forged } })
     assert.equal(denied.status, 401)
+  })
+
+  it('reports the sam role on login and /me', async () => {
+    const res = await login(PASSWORD)
+    assert.equal(((await res.json()) as { role: string }).role, 'sam')
+    const cookie = res.headers.get('set-cookie')!.split(';')[0]
+    const me = await fetch(`${baseUrl()}/api/auth/me`, { headers: { Cookie: cookie } })
+    assert.equal(((await me.json()) as { role: string }).role, 'sam')
+  })
+
+  it('rejects the Callie password when CALLIE_PASSWORD is unset', async () => {
+    assert.equal((await login('callie-secret')).status, 401)
   })
 
   it('accepts Authorization: Bearer <password> for writes', async () => {

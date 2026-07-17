@@ -1,9 +1,9 @@
 import { FormEvent, useState } from 'react'
 import { setAuthState, useAuthState } from '../../auth'
 
-// Reads are public; this small prompt (in the sidebar / mobile drawer)
-// unlocks write access (and Sam-only sections) with the shared password.
-export default function AreYouSam() {
+// Callie's own door into the app: her password unlocks read/write on the
+// Callie section only. Mirrors AreYouSam, with her colors.
+export default function AreYouCallie() {
   const status = useAuthState()
   const [open, setOpen] = useState(false)
   const [password, setPassword] = useState('')
@@ -35,12 +35,12 @@ export default function AreYouSam() {
     }
   }
 
-  if (status === 'checking' || status === 'callie') return null
+  if (status === 'checking' || status === 'sam') return null
 
-  if (status === 'sam') {
+  if (status === 'callie') {
     return (
-      <div className="px-6 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-        ✓ Sam — write access
+      <div className="px-6 py-2 text-xs" style={{ color: 'rgba(244,143,187,0.75)' }}>
+        ✓ Callie 🎀 — your pages
       </div>
     )
   }
@@ -58,7 +58,7 @@ export default function AreYouSam() {
             className="w-full rounded-lg px-2.5 py-1.5 text-sm outline-none"
             style={{
               background: '#0c0c0c',
-              border: `1px solid ${error ? 'rgba(248,113,113,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              border: `1px solid ${error ? 'rgba(248,113,113,0.5)' : 'rgba(244,143,187,0.35)'}`,
               color: 'rgba(255,255,255,0.92)',
             }}
           />
@@ -67,9 +67,9 @@ export default function AreYouSam() {
               type="submit"
               disabled={submitting || !password}
               className="flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium disabled:opacity-40"
-              style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.92)' }}
+              style={{ background: 'rgba(244,143,187,0.2)', color: 'rgba(255,214,231,0.95)' }}
             >
-              {submitting ? '…' : 'Unlock'}
+              {submitting ? '…' : 'Unlock 🎀'}
             </button>
             <button
               type="button"
@@ -80,15 +80,16 @@ export default function AreYouSam() {
               Cancel
             </button>
           </div>
-          {error && <p className="text-xs text-red-400">That's not Sam.</p>}
+          {error && <p className="text-xs text-red-400">That's not Callie.</p>}
         </form>
       ) : (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          className="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors hover:bg-gray-800"
+          style={{ color: 'rgba(244,143,187,0.6)' }}
         >
-          Are you Sam?
+          Are you Callie?
         </button>
       )}
     </div>
