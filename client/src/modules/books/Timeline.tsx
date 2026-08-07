@@ -331,13 +331,9 @@ function CardInner({ span, hovered }: { span: Span & { barH: number }; hovered: 
         <div className="flex items-center gap-2 mt-1.5" style={{ fontFamily: "'Kreon', serif" }}>
           {hasDuration && (
             <span
-              className="inline-flex items-center rounded-full"
               style={{
                 fontSize: '0.68rem',
-                padding: '1px 8px',
                 color: `rgba(${rgb},0.95)`,
-                background: `rgba(${rgb},0.12)`,
-                border: `1px solid rgba(${rgb},0.25)`,
               }}
             >
               {durDays} {durDays === 1 ? 'day' : 'days'}
