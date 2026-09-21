@@ -3,7 +3,7 @@
 Personal dashboard. React + Vite client, Express + node:sqlite server.
 
 ## Git
-Don't commit or push unless explicitly asked.
+After finishing a new feature (tests passing), commit and push to `main` automatically — no need to ask first. For small fixes/tweaks that aren't a full feature, keep asking before committing or pushing unless told otherwise.
 
 ## After every change
 1. If the change adds or alters an API endpoint or server-side logic, add tests in the section's `route.test.ts`.
@@ -63,6 +63,41 @@ The app is deployed on Fly.io (`Dockerfile` + `fly.toml`, SQLite on a volume at 
 - `npm run pull-db` — replaces the local DB with prod's (prod is the source of truth for data entry; local is for development). Backs up the local file first; full replace, not a merge.
 - In production Express also serves `client/dist` with an SPA fallback; there's no separate static host.
 - When doing the Books "For You" flow (below) against prod, hit `HOMEBASE_URL` with `Authorization: Bearer <AUTH_PASSWORD>` instead of localhost.
+
+## Renegade Platinum nuzlocke (`games/renplat`)
+
+Tracks the current run and the graveyard of past ones, driven by uploaded Pokémon
+Platinum `.sav` files (Renegade Platinum is a Platinum ROM hack, so the save
+layout is the retail one).
+
+- `server/src/modules/games/renplat/save.ts` — the parser. Two 0x40000 slots, each
+  a general block (`0xCF2C`) then a storage block (`0x121E4`); the live slot is the
+  one with the higher **valid** save counter (`0xFFFFFFFF` means erased flash — real
+  saves in the wild have a slot like that, and trusting it reads garbage). Party at
+  general `+0xA0`, box data and box names in the storage block. Pokémon records are
+  checksum-encrypted and PID-block-shuffled; party records carry a second
+  PID-encrypted battle-stats block holding the level, so **boxed** mons get their
+  level from experience + the growth curve instead.
+- `data/*.json` — vendored name tables (species + types, moves, abilities, Gen-IV
+  item indices, Gen-IV met locations, growth curves). Generated once from veekun's
+  CSVs and PKHeX's Gen-IV location text; no runtime network calls.
+- Sprites: `client/public/games/renplat/sprites/<dex>.png`, 1–493.
+- **Deaths use the Grave-box convention:** a mon in a PC box named `Grave` with no
+  `renplat_death` row is a "pending death" the UI asks about. PID is the key, so
+  boxing several mons before syncing works and nothing is ever auto-marked dead.
+- **Runs are keyed on the save's trainer ID + secret ID** — a fresh file auto-opens
+  run #N+1. Ending a run is always a deliberate `POST /runs/:id/end`.
+- `GET /state` serves the **furthest-progress** snapshot for a run (highest
+  playtime), not the newest upload, so uploading an old backup doesn't roll the
+  dashboard back. Every snapshot keeps its raw `.sav` blob, so improving the parser
+  lets old snapshots be re-read.
+- Level caps by badge count live in `LEVEL_CAPS` (`save.ts`): 16, 26, 33, 39, 44,
+  53, 56, 62, 78. Party members over the cap are flagged red.
+- `renplat_fight` is seeded with Platinum's boss progression (`renplat_fight_seed_v1`,
+  `INSERT OR IGNORE` on `key`, so edits and deletions stick). Threat notes and the
+  1–5 danger rating are yours to fill in; kill counts tally from linked deaths.
+- Tests build real save buffers via `fixture.ts` (same encryption and shuffle the
+  cartridge writes) rather than committing a 512KB binary.
 
 ## Books "For You" recommendations (no LLM key)
 

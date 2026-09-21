@@ -6,6 +6,7 @@ import { migrations as exportSchema } from './export/schema'
 import { migrations as hades2 } from './games/hades2/schema'
 import { migrations as sts2 } from './games/sts2/schema'
 import { migrations as shovelknight } from './games/shovelknight/schema'
+import { migrations as renplat } from './games/renplat/schema'
 import { migrations as backlog } from './backlog/schema'
 import { migrations as callie } from './callie/schema'
 
@@ -18,6 +19,7 @@ export const allMigrations = [
   ...hades2,
   ...sts2,
   ...shovelknight,
+  ...renplat,
   ...backlog,
   ...callie,
 ]
