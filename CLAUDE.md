@@ -88,6 +88,12 @@ layout is the retail one).
   reads — and writes it to `$RENPLAT_SAVE_DIR` (`~/PokemonSaves/renplat/`) as
   `renplat-YYYYMMDD-HHMM.sav`. Upload those through the tab; nothing reads them from
   disk, so the folder is just an archive.
+- **Only an in-game save writes the cart battery.** OpenEmu's Quick/Auto Save States
+  don't, and OpenEmu can flush a blank battery when one is created — which yields a
+  512KB run of `0xFF` and a legitimate "No valid save slot found" from the parser.
+  The `renplat` function now checks for the general-block size magic (`0xCF2C` at
+  `0xCF20` in either slot) and refuses to write a blank export. If the tab looks
+  stale, the cause is almost always savestates instead of an in-game save.
 - **Deaths use the Grave-box convention:** a mon in a PC box named `Grave` with no
   `renplat_death` row is a "pending death" the UI asks about. PID is the key, so
   boxing several mons before syncing works and nothing is ever auto-marked dead.
