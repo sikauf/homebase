@@ -298,6 +298,11 @@ describe('fights', () => {
     const keys = fights.map((f) => f.key)
     assert.ok(keys.includes('roark'))
     assert.ok(keys.includes('cynthia'))
+    // Rivals interleave with the bosses by sort_order.
+    assert.ok(keys.includes('barry-203'))
+    assert.ok(keys.includes('dawn-jubilife'))
+    assert.ok(keys.indexOf('barry-203') < keys.indexOf('gardenia'), 'Route 203 Barry comes before the 2nd gym')
+    assert.ok(keys.indexOf('barry-league') > keys.indexOf('volkner'), 'the League rematch is last')
     assert.ok(keys.indexOf('roark') < keys.indexOf('volkner'), 'story order')
     assert.equal(fights.find((f) => f.key === 'roark')!.badge_index, 0)
     assert.equal(fights.find((f) => f.key === 'cynthia')!.badge_index, 8)
@@ -372,7 +377,7 @@ describe('fights', () => {
     const runId = await currentRunId(4063)
     const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
     const first = state.fights.find((f: { cleared: boolean }) => !f.cleared)
-    assert.equal(first.key, 'mars-windworks', 'first uncleared fight is what is next up')
+    assert.equal(first.key, 'barry-203', 'first uncleared fight is what is next up')
     assert.equal(state.fights.find((f: { key: string }) => f.key === 'gardenia').cleared, true)
   })
 

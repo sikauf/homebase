@@ -1,14 +1,91 @@
 import { useState } from 'react'
 import type { Fight } from './api'
-import { CALCULATOR_URL } from './data'
+import { CALCULATOR_URL, trainerSpriteUrl } from './data'
 
 interface Props {
   fights: Fight[]
   levelCaps: number[]
-  onSave: (id: number, payload: { danger?: number | null; threat_note?: string }) => Promise<void>
+  onSave: (
+    id: number,
+    payload: { danger?: number | null; threat_note?: string; name?: string; location?: string },
+  ) => Promise<void>
   onToggleCleared: (fight: Fight) => Promise<void>
   onAdd: (name: string, location: string) => Promise<void>
   onDelete: (id: number) => Promise<void>
+}
+
+function TrainerPortrait({ name, dim }: { name: string; dim: boolean }) {
+  const url = trainerSpriteUrl(name)
+  if (!url) {
+    return (
+      <span
+        className="w-11 h-11 shrink-0 rounded-lg flex items-center justify-center text-sm font-bold"
+        style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.25)' }}
+      >
+        {name.trim().charAt(0).toUpperCase() || '?'}
+      </span>
+    )
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      draggable={false}
+      className="w-11 h-11 shrink-0 select-none object-contain"
+      style={{
+        imageRendering: 'pixelated',
+        filter: dim ? 'grayscale(1) brightness(0.7)' : 'drop-shadow(0 2px 5px rgba(0,0,0,0.5))',
+      }}
+    />
+  )
+}
+
+/** Click-to-edit text, so the seeded rival locations can be corrected in place. */
+function EditableText({ value, placeholder, className, style, onCommit }: {
+  value: string
+  placeholder: string
+  className: string
+  style: React.CSSProperties
+  onCommit: (next: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          setEditing(false)
+          if (draft.trim() && draft !== value) onCommit(draft.trim())
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+          if (e.key === 'Escape') {
+            setDraft(value)
+            setEditing(false)
+          }
+        }}
+        className={`${className} rounded px-1 -mx-1 min-w-0`}
+        style={{ ...style, background: '#0c0c0c', border: '1px solid rgba(255,255,255,0.15)' }}
+      />
+    )
+  }
+  return (
+    <span
+      onClick={() => {
+        setDraft(value)
+        setEditing(true)
+      }}
+      className={`${className} cursor-text`}
+      style={style}
+      title="Click to edit"
+    >
+      {value || placeholder}
+    </span>
+  )
 }
 
 function DangerDots({ danger, onPick }: { danger: number | null; onPick?: (n: number) => void }) {
@@ -38,7 +115,7 @@ function ClearBox({ fight, onToggle }: { fight: Fight; onToggle: () => void }) {
     <button
       onClick={locked ? undefined : onToggle}
       disabled={locked}
-      className="w-4 h-4 rounded shrink-0 flex items-center justify-center text-[10px] font-bold"
+      className="w-4 h-4 mt-0.5 rounded shrink-0 flex items-center justify-center text-[10px] font-bold"
       style={{
         background: fight.cleared ? 'rgba(95,184,95,0.2)' : 'transparent',
         border: `1px solid ${fight.cleared ? 'rgba(95,184,95,0.5)' : 'rgba(255,255,255,0.15)'}`,
@@ -70,84 +147,89 @@ function FightRow({ fight, cap, next, onSave, onToggleCleared, onDelete }: {
 
   return (
     <div
-      className="rounded-xl p-3"
+      className="rounded-xl p-2.5 flex items-start gap-2.5"
       style={{
         background: next ? 'rgba(210,160,60,0.07)' : '#1a1a1a',
         border: `1px solid ${next ? 'rgba(210,160,60,0.3)' : 'rgba(255,255,255,0.06)'}`,
         opacity: fight.cleared && !next ? 0.55 : 1,
       }}
     >
-      <div className="flex items-center gap-2 flex-wrap">
-        <ClearBox fight={fight} onToggle={() => onToggleCleared(fight)} />
-        <span
-          className="font-semibold text-sm"
-          style={{
-            color: fight.cleared ? 'rgba(255,255,255,0.5)' : '#fff',
-            textDecoration: fight.cleared ? 'line-through' : 'none',
-          }}
-        >
-          {fight.name}
-        </span>
-        {next && (
-          <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(210,160,60,0.2)', color: '#d2a03c' }}>
-            next up
-          </span>
-        )}
-        <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          {fight.location}
-        </span>
-        <span className="flex-1" />
-        {fight.kills > 0 && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,90,90,0.15)', color: '#e06060' }}>
-            {fight.kills} {fight.kills === 1 ? 'kill' : 'kills'}
-          </span>
-        )}
-        <DangerDots danger={fight.danger} onPick={(n) => onSave(fight.id, { danger: n === 0 ? null : n })} />
-      </div>
+      <ClearBox fight={fight} onToggle={() => onToggleCleared(fight)} />
+      <TrainerPortrait name={fight.name} dim={fight.cleared} />
 
-      <div className="flex items-center gap-2 mt-1.5 pl-6">
-        {cap !== undefined && (
-          <span className="text-[10px] tabular-nums" style={{ color: 'rgba(255,255,255,0.25)' }}>
-            {fight.badge_index} badges · cap {cap}
-          </span>
-        )}
-        <span className="flex-1" />
-        <a
-          href={CALCULATOR_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="text-[10px] hover:underline"
-          style={{ color: 'rgba(120,170,230,0.7)' }}
-        >
-          calc ↗
-        </a>
-        <button onClick={() => onDelete(fight.id)} className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
-          remove
-        </button>
-      </div>
-
-      {editing ? (
-        <textarea
-          autoFocus
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onBlur={commit}
-          rows={2}
-          placeholder="What makes this fight dangerous?"
-          className="w-full mt-2 rounded-lg px-2 py-1.5 text-xs resize-none"
-          style={{ background: '#0c0c0c', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.92)' }}
-        />
-      ) : (
-        (!fight.cleared || fight.threat_note) && (
-          <div
-            onClick={() => setEditing(true)}
-            className="mt-1.5 pl-6 text-xs cursor-text leading-relaxed"
-            style={{ color: fight.threat_note ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)' }}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <EditableText
+            value={fight.name}
+            placeholder="Unnamed"
+            className="font-semibold text-sm"
+            style={{
+              color: fight.cleared ? 'rgba(255,255,255,0.5)' : '#fff',
+              textDecoration: fight.cleared ? 'line-through' : 'none',
+            }}
+            onCommit={(name) => onSave(fight.id, { name })}
+          />
+          {next && (
+            <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(210,160,60,0.2)', color: '#d2a03c' }}>
+              next up
+            </span>
+          )}
+          <EditableText
+            value={fight.location ?? ''}
+            placeholder="add a location…"
+            className="text-[11px]"
+            style={{ color: 'rgba(255,255,255,0.3)' }}
+            onCommit={(location) => onSave(fight.id, { location })}
+          />
+          {cap !== undefined && (
+            <span className="text-[10px] tabular-nums" style={{ color: 'rgba(255,255,255,0.22)' }}>
+              · {fight.badge_index}b · cap {cap}
+            </span>
+          )}
+          <span className="flex-1" />
+          {fight.kills > 0 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(220,90,90,0.15)', color: '#e06060' }}>
+              {fight.kills} {fight.kills === 1 ? 'kill' : 'kills'}
+            </span>
+          )}
+          <DangerDots danger={fight.danger} onPick={(n) => onSave(fight.id, { danger: n === 0 ? null : n })} />
+          <a
+            href={CALCULATOR_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] hover:underline shrink-0"
+            style={{ color: 'rgba(120,170,230,0.7)' }}
           >
-            {fight.threat_note || 'Add a threat note…'}
-          </div>
-        )
-      )}
+            calc ↗
+          </a>
+          <button onClick={() => onDelete(fight.id)} className="text-[10px] shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            ×
+          </button>
+        </div>
+
+        {editing ? (
+          <textarea
+            autoFocus
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={commit}
+            rows={2}
+            placeholder="What makes this fight dangerous?"
+            className="w-full mt-1.5 rounded-lg px-2 py-1.5 text-xs resize-none"
+            style={{ background: '#0c0c0c', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.92)' }}
+          />
+        ) : (
+          (!fight.cleared || fight.threat_note) && (
+            <div
+              onClick={() => setEditing(true)}
+              className="mt-0.5 text-xs cursor-text leading-snug"
+              style={{ color: fight.threat_note ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)' }}
+            >
+              {fight.threat_note || 'Add a threat note…'}
+            </div>
+          )
+        )}
+      </div>
     </div>
   )
 }

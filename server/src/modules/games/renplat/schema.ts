@@ -131,6 +131,39 @@ export const migrations: Migration[] = [
     },
   },
   {
+    // Rival fights. Barry's stops follow Platinum's story; Renegade Platinum
+    // also turns the counterpart (Dawn) into a recurring rival. Slotted between
+    // the existing sort_orders so they interleave with the bosses.
+    //
+    // These locations are a best reconstruction, not gospel — especially Dawn's.
+    // Both the name and location are editable inline, so correct them in place.
+    id: 'renplat_fight_rivals_v1',
+    up: (db) => {
+      const insert = db.prepare(
+        `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      const RIVALS: [key: string, name: string, location: string, badges: number, order: number][] = [
+        ['barry-203', 'Barry', 'Route 203', 0, 5],
+        ['dawn-jubilife', 'Dawn', 'Jubilife City', 0, 8],
+        ['barry-floaroma', 'Barry', 'Floaroma Town', 1, 15],
+        ['dawn-eterna-forest', 'Dawn', 'Eterna Forest', 1, 22],
+        ['barry-eterna', 'Barry', 'Eterna City', 1, 26],
+        ['barry-pastoria', 'Barry', 'Pastoria City', 3, 48],
+        ['barry-hearthome', 'Barry', 'Hearthome City', 3, 55],
+        ['barry-canalave', 'Barry', 'Canalave City', 5, 85],
+        ['dawn-celestic', 'Dawn', 'Celestic Town', 5, 88],
+        ['dawn-sunyshore', 'Dawn', 'Sunyshore City', 7, 145],
+        ['barry-victory-road', 'Barry', 'Victory Road', 8, 155],
+        ['dawn-league', 'Dawn', 'Pokémon League', 8, 158],
+        ['barry-league', 'Barry', 'Pokémon League', 8, 159],
+      ]
+      for (const [key, name, location, badges, order] of RIVALS) {
+        insert.run(key, name, location, badges, order)
+      }
+    },
+  },
+  {
     // Per-run, unlike the fight row itself: a threat note is worth keeping
     // across attempts, "I've beaten this" is not.
     id: 'renplat_fight_cleared_v1',

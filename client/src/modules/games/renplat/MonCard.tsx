@@ -39,71 +39,62 @@ export default function MonCard({ mon, levelCap }: Props) {
 
   return (
     <div
-      className="rounded-xl p-3 flex flex-col gap-2"
+      className="rounded-xl p-2.5 flex gap-2.5"
       style={{
         background: '#1a1a1a',
         border: `1px solid ${overCap ? 'rgba(220,90,90,0.45)' : 'rgba(255,255,255,0.06)'}`,
       }}
     >
-      <div className="flex items-start gap-2">
-        <Sprite species={mon.species} size={56} />
-        <div className="min-w-0 flex-1">
+      {/* Sprite column: big art, with the details alongside rather than beneath
+          it — the old stacked layout left the card mostly empty. */}
+      <div className="flex flex-col items-center shrink-0 w-[92px] gap-1">
+        <Sprite species={mon.species} size={88} />
+        <div className="flex gap-1 flex-wrap justify-center">
+          {mon.types.map((t) => (
+            <TypeChip key={t} type={t} small />
+          ))}
+        </div>
+      </div>
+
+      <div className="min-w-0 flex-1 flex flex-col gap-1.5">
+        <div>
           <div className="flex items-baseline gap-1.5">
             <span className="font-semibold truncate text-white text-sm">{mon.nickname}</span>
             {mon.shiny && <span className="text-[10px]" style={{ color: '#d4af37' }}>★</span>}
-          </div>
-          {mon.nickname !== mon.name && (
-            <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              {mon.name}
-            </div>
-          )}
-          <div className="flex items-center gap-1.5 mt-1">
             <span
-              className="text-xs font-bold tabular-nums"
+              className="text-xs font-bold tabular-nums ml-auto shrink-0"
               style={{ color: overCap ? '#e06060' : 'rgba(255,255,255,0.92)' }}
               title={overCap ? `Over the level ${levelCap} cap` : undefined}
             >
               Lv {mon.level}
+              {overCap && <span className="ml-1 text-[9px] uppercase">over</span>}
             </span>
-            {overCap && (
-              <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#e06060' }}>
-                over cap
-              </span>
-            )}
           </div>
-          <div className="flex gap-1 mt-1 flex-wrap">
-            {mon.types.map((t) => (
-              <TypeChip key={t} type={t} small />
-            ))}
+          <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            {mon.nickname !== mon.name && `${mon.name} · `}
+            {mon.nature} · {mon.ability}
+          </div>
+          <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.28)' }}>
+            {mon.heldItem ?? 'No item'} · {mon.metLocation}
           </div>
         </div>
-      </div>
 
-      <div className="text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
-        <div>
-          {mon.nature} · {mon.ability}
+        <div className="grid grid-cols-2 gap-1 mt-auto">
+          {mon.moves.map((move, i) => (
+            <div
+              key={i}
+              className="rounded px-1.5 py-1 text-[10px] truncate"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                borderLeft: `2px solid ${typeColor(move.type)}`,
+                color: 'rgba(255,255,255,0.7)',
+              }}
+              title={`${move.name} — ${move.type}${move.power ? `, ${move.power} BP` : ''}, ${move.pp} PP`}
+            >
+              {move.name}
+            </div>
+          ))}
         </div>
-        <div className="truncate">{mon.heldItem ?? 'No item'}</div>
-        <div className="truncate" style={{ color: 'rgba(255,255,255,0.25)' }}>
-          Caught {mon.metLocation}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-1">
-        {mon.moves.map((move, i) => (
-          <div
-            key={i}
-            className="rounded px-1.5 py-1 text-[10px] truncate"
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              borderLeft: `2px solid ${typeColor(move.type)}`,
-              color: 'rgba(255,255,255,0.7)',
-            }}
-            title={`${move.name} — ${move.type}${move.power ? `, ${move.power} BP` : ''}, ${move.pp} PP`}
-          >
-            {move.name}
-          </div>
-        ))}
       </div>
     </div>
   )

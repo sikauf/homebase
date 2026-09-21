@@ -38,20 +38,20 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
           Caught — {encounters.byLocation.reduce((n, e) => n + e.mons.length, 0)} across{' '}
           {encounters.byLocation.length} {encounters.byLocation.length === 1 ? 'location' : 'locations'}
         </SectionLabel>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
           {encounters.byLocation.map((entry) => (
             <div
               key={entry.location}
-              className="rounded-lg px-2 py-1.5 flex items-center gap-1.5 min-w-0"
+              className="rounded-lg px-2 py-1.5 flex items-center gap-2 min-w-0"
               style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
             >
-              <div className="flex shrink-0 -space-x-2">
+              <div className="flex shrink-0 -space-x-3">
                 {entry.mons.slice(0, 3).map((m) => (
-                  <Sprite key={m.pid} species={m.species} size={30} />
+                  <Sprite key={m.pid} species={m.species} size={56} />
                 ))}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                <div className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>
                   {entry.location}
                 </div>
                 <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
@@ -68,26 +68,26 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
 
       <div>
         <SectionLabel>Lost — {encounters.losses.length}</SectionLabel>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
           {encounters.losses.map((loss) => (
             <div
               key={loss.id}
-              className="group rounded-lg px-2 py-1.5 flex items-center gap-1.5 min-w-0"
+              className="group rounded-lg px-2 py-1.5 flex items-center gap-2 min-w-0"
               style={{ background: '#151515', border: '1px solid rgba(255,255,255,0.05)' }}
               title={loss.note ?? undefined}
             >
               {loss.species ? (
-                <Sprite species={loss.species} size={30} dead />
+                <Sprite species={loss.species} size={56} dead />
               ) : (
                 <span
-                  className="w-[30px] h-[30px] shrink-0 rounded flex items-center justify-center text-[11px]"
+                  className="w-[56px] h-[56px] shrink-0 rounded flex items-center justify-center text-lg"
                   style={{ background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.2)' }}
                 >
                   ?
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <div className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                <div className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.6)' }}>
                   {loss.location}
                 </div>
                 <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>

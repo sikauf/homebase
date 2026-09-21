@@ -6,6 +6,25 @@ export const DOCS_URL =
 /** Sprites are vendored per national dex number (see client/public/games/renplat). */
 export const spriteUrl = (species: number) => `/games/renplat/sprites/${species}.png`
 
+/** Vendored trainer sprites, in `client/public/games/renplat/trainers/`. */
+const TRAINER_SPRITES = [
+  'crasherwake', 'roark', 'gardenia', 'maylene', 'fantina', 'byron', 'candice', 'volkner',
+  'aaron', 'bertha', 'flint', 'lucian', 'cynthia', 'cyrus', 'mars', 'jupiter', 'saturn',
+  'barry', 'dawn',
+]
+
+/**
+ * Picks a trainer sprite from the fight's name rather than a stored column, so
+ * fights you add by hand ("Barry — Canalave", "Cyrus rematch") get art for free.
+ * Longest match wins, so "Crasher Wake" doesn't resolve to nothing and
+ * "Mars & Jupiter" lands on Mars.
+ */
+export function trainerSpriteUrl(name: string): string | null {
+  const needle = name.toLowerCase().replace(/[^a-z]/g, '')
+  const hit = TRAINER_SPRITES.filter((t) => needle.includes(t)).sort((a, b) => b.length - a.length)[0]
+  return hit ? `/games/renplat/trainers/${hit}.png` : null
+}
+
 // Type palette, darkened from the canonical hues so white text sits on it cleanly.
 export const TYPE_COLORS: Record<string, string> = {
   Normal: '#8f8f76',
