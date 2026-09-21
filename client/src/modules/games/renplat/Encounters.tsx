@@ -63,7 +63,8 @@ function SpeciesPicker({ species, value, onChange }: {
  */
 export default function Encounters({ encounters, graveLocations, onLog, onDelete }: Props) {
   const [location, setLocation] = useState('')
-  const [outcome, setOutcome] = useState('fled')
+  // Fainted is the common case — most lost encounters die to your own attack.
+  const [outcome, setOutcome] = useState('fainted')
   const [note, setNote] = useState('')
   const [speciesText, setSpeciesText] = useState('')
   const [species, setSpecies] = useState<Species[]>([])

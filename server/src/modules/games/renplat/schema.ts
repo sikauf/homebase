@@ -143,9 +143,9 @@ export const migrations: Migration[] = [
         `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order)
          VALUES (?, ?, ?, ?, ?)`,
       )
+      // Nothing before Mars at Valley Windworks (sort_order 10) — the pre-Mars
+      // Barry and Dawn fights aren't worth tracking; see the drop migration below.
       const RIVALS: [key: string, name: string, location: string, badges: number, order: number][] = [
-        ['barry-203', 'Barry', 'Route 203', 0, 5],
-        ['dawn-jubilife', 'Dawn', 'Jubilife City', 0, 8],
         ['barry-floaroma', 'Barry', 'Floaroma Town', 1, 15],
         ['dawn-eterna-forest', 'Dawn', 'Eterna Forest', 1, 22],
         ['barry-eterna', 'Barry', 'Eterna City', 1, 26],
@@ -188,5 +188,16 @@ export const migrations: Migration[] = [
       cleared_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (run_id, fight_id)
     )`,
+  },
+  {
+    // The rival fights ahead of Mars at Valley Windworks were seeded by
+    // renplat_fight_rivals_v1 before being dropped from that list, so any
+    // database that already applied it still holds them. Removing the rows
+    // cascades to their cleared marks and nulls any death that pointed at them.
+    id: 'renplat_fight_drop_pre_mars_rivals_v1',
+    up: (db) => {
+      const drop = db.prepare('DELETE FROM renplat_fight WHERE key = ?')
+      for (const key of ['barry-203', 'dawn-jubilife']) drop.run(key)
+    },
   },
 ]

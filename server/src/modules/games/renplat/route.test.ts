@@ -299,10 +299,15 @@ describe('fights', () => {
     assert.ok(keys.includes('roark'))
     assert.ok(keys.includes('cynthia'))
     // Rivals interleave with the bosses by sort_order.
-    assert.ok(keys.includes('barry-203'))
-    assert.ok(keys.includes('dawn-jubilife'))
-    assert.ok(keys.indexOf('barry-203') < keys.indexOf('gardenia'), 'Route 203 Barry comes before the 2nd gym')
+    assert.ok(keys.includes('barry-floaroma'))
+    assert.ok(keys.includes('dawn-eterna-forest'))
+    assert.ok(keys.indexOf('barry-floaroma') < keys.indexOf('gardenia'), 'Floaroma Barry precedes the 2nd gym')
     assert.ok(keys.indexOf('barry-league') > keys.indexOf('volkner'), 'the League rematch is last')
+    // Nothing rival-shaped sits ahead of Mars at Valley Windworks.
+    assert.ok(!keys.includes('barry-203'), 'the Route 203 Barry fight is dropped')
+    assert.ok(!keys.includes('dawn-jubilife'), 'the Jubilife Dawn fight is dropped')
+    const beforeMars = fights.slice(0, keys.indexOf('mars-windworks'))
+    assert.deepEqual(beforeMars.map((f) => f.key), ['roark'], 'only Roark precedes the first Mars fight')
     // Renegade Platinum's own additions, in their story slots.
     assert.ok(keys.indexOf('mansion-double') < keys.indexOf('wake'), 'Route 212 mansion precedes Pastoria')
     assert.ok(keys.indexOf('aaron-early') < keys.indexOf('saturn-valor'), 'early Aaron precedes Saturn')
@@ -386,7 +391,7 @@ describe('fights', () => {
     const runId = await currentRunId(4063)
     const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
     const first = state.fights.find((f: { cleared: boolean }) => !f.cleared)
-    assert.equal(first.key, 'barry-203', 'first uncleared fight is what is next up')
+    assert.equal(first.key, 'mars-windworks', 'first uncleared fight is what is next up')
     assert.equal(state.fights.find((f: { key: string }) => f.key === 'gardenia').cleared, true)
   })
 

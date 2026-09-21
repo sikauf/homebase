@@ -55,9 +55,10 @@ export function formatPlaytime(seconds: number): string {
   return `${h}h ${String(m).padStart(2, '0')}m`
 }
 
+// Order drives the outcome dropdown; Fainted leads because it's the default.
 export const OUTCOME_LABELS: Record<string, string> = {
-  fled: 'Fled',
   fainted: 'Fainted',
+  fled: 'Fled',
   dupe: 'Dupe — skipped',
 }
 
