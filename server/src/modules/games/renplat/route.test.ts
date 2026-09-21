@@ -299,9 +299,14 @@ describe('fights', () => {
     assert.ok(keys.includes('roark'))
     assert.ok(keys.includes('cynthia'))
     // Rivals interleave with the bosses by sort_order.
-    assert.ok(keys.includes('barry-floaroma'))
     assert.ok(keys.includes('dawn-eterna-forest'))
-    assert.ok(keys.indexOf('barry-floaroma') < keys.indexOf('gardenia'), 'Floaroma Barry precedes the 2nd gym')
+    assert.ok(keys.includes('cheryl-eterna-forest'))
+    assert.ok(!keys.includes('barry-floaroma'), 'there is no Barry fight in Floaroma Town')
+    assert.ok(
+      keys.indexOf('cheryl-eterna-forest') < keys.indexOf('gardenia'),
+      'Eterna Forest comes before the Eterna City gym',
+    )
+    assert.ok(keys.indexOf('cheryl-eterna-forest') > keys.indexOf('mars-windworks'), 'and after Windworks')
     assert.ok(keys.indexOf('barry-league') > keys.indexOf('volkner'), 'the League rematch is last')
     // Nothing rival-shaped sits ahead of Mars at Valley Windworks.
     assert.ok(!keys.includes('barry-203'), 'the Route 203 Barry fight is dropped')

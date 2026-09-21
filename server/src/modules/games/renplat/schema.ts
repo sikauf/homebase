@@ -146,7 +146,6 @@ export const migrations: Migration[] = [
       // Nothing before Mars at Valley Windworks (sort_order 10) — the pre-Mars
       // Barry and Dawn fights aren't worth tracking; see the drop migration below.
       const RIVALS: [key: string, name: string, location: string, badges: number, order: number][] = [
-        ['barry-floaroma', 'Barry', 'Floaroma Town', 1, 15],
         ['dawn-eterna-forest', 'Dawn', 'Eterna Forest', 1, 22],
         ['barry-eterna', 'Barry', 'Eterna City', 1, 26],
         ['barry-pastoria', 'Barry', 'Pastoria City', 3, 48],
@@ -198,6 +197,19 @@ export const migrations: Migration[] = [
     up: (db) => {
       const drop = db.prepare('DELETE FROM renplat_fight WHERE key = ?')
       for (const key of ['barry-203', 'dawn-jubilife']) drop.run(key)
+    },
+  },
+  {
+    // There is no Barry fight in Floaroma Town — that row was a bad guess in
+    // renplat_fight_rivals_v1. Cheryl in Eterna Forest is a real one, and it
+    // comes before Eterna City, so it sorts ahead of Gardenia.
+    id: 'renplat_fight_cheryl_v1',
+    up: (db) => {
+      db.prepare('DELETE FROM renplat_fight WHERE key = ?').run('barry-floaroma')
+      db.prepare(
+        `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order)
+         VALUES (?, ?, ?, ?, ?)`,
+      ).run('cheryl-eterna-forest', 'Cheryl', 'Eterna Forest', 1, 16)
     },
   },
 ]

@@ -11,6 +11,8 @@ const TRAINER_SPRITES = [
   'crasherwake', 'roark', 'gardenia', 'maylene', 'fantina', 'byron', 'candice', 'volkner',
   'aaron', 'bertha', 'flint', 'lucian', 'cynthia', 'cyrus', 'mars', 'jupiter', 'saturn',
   'barry', 'dawn',
+  // Sinnoh's partner characters — Renegade Platinum turns some of them into fights.
+  'cheryl', 'mira', 'riley', 'buck', 'marley',
 ]
 
 /**
