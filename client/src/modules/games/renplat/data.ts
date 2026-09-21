@@ -36,8 +36,6 @@ export function formatPlaytime(seconds: number): string {
   return `${h}h ${String(m).padStart(2, '0')}m`
 }
 
-export const formatMoney = (money: number) => `¥${money.toLocaleString()}`
-
 export const OUTCOME_LABELS: Record<string, string> = {
   fled: 'Fled',
   fainted: 'Fainted',

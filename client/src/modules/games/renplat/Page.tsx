@@ -7,7 +7,7 @@ import DeathModal from './DeathModal'
 import FightList from './FightList'
 import LostRuns from './LostRuns'
 import Encounters from './Encounters'
-import { CALCULATOR_URL, DOCS_URL, formatMoney, formatPlaytime } from './data'
+import { CALCULATOR_URL, DOCS_URL, formatPlaytime } from './data'
 
 type Tab = 'fights' | 'runs' | 'encounters'
 
@@ -76,6 +76,8 @@ export default function RenegadePlatinum() {
   const levelCap = save?.levelCap ?? levelCaps[0]
   const highestLevel = party.reduce((max, m) => Math.max(max, m.level), 0)
   const overCapCount = party.filter((m) => m.level > levelCap).length
+  // Everything caught and still breathing — party plus boxes, minus the Grave box.
+  const aliveCount = encounters?.byLocation.reduce((n, e) => n + e.mons.length, 0) ?? 0
 
   return (
     <GamePageShell title="Renegade Platinum">
@@ -163,13 +165,13 @@ export default function RenegadePlatinum() {
               <Stat label="Level cap" value={String(levelCap)} accent={overCapCount > 0 ? '#e06060' : undefined}
                 sub={highestLevel > 0 ? `team at ${highestLevel}` : undefined} />
               <Stat label="Played" value={formatPlaytime(save.playtime.total)} />
-              <Stat label="Money" value={formatMoney(save.money)} />
               <Stat
                 label="Deaths"
                 value={String(run?.deaths ?? 0)}
                 accent={(run?.deaths ?? 0) > 0 ? '#e06060' : undefined}
               />
-              <Stat label="Caught" value={String(encounters?.byLocation.reduce((n, e) => n + e.mons.length, 0) ?? 0)} />
+              <Stat label="Alive" value={String(aliveCount)} />
+              <Stat label="Lost" value={String(encounters?.losses.length ?? 0)} />
               <span className="flex-1" />
               {state.snapshot && (
                 <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
@@ -259,7 +261,15 @@ export default function RenegadePlatinum() {
           <FightList
             fights={fights}
             levelCaps={levelCaps}
-            currentBadges={badges}
+            onToggleCleared={(fight) =>
+              act(() =>
+                run
+                  ? fight.cleared
+                    ? api.unclearFight(fight.id, run.id)
+                    : api.clearFight(fight.id, run.id)
+                  : Promise.resolve(),
+              )
+            }
             onSave={(id, payload) => act(() => api.updateFight(id, payload))}
             onAdd={(name, location) => act(() => api.createFight({ name, location }))}
             onDelete={(id) => act(() => api.deleteFight(id))}

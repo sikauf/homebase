@@ -325,6 +325,70 @@ describe('fights', () => {
     assert.equal((await json('/fights/999999', 'PATCH', { danger: 3 })).status, 404)
   })
 
+  // Badge count alone can't say where you are inside a tier, so "next up" comes
+  // from what's been cleared, not from the badge number.
+  it('auto-clears gyms whose badge you already hold, and only those', async () => {
+    await upload({ trainerId: 4060, secretId: 60, badges: 3 })
+    const runId = await currentRunId(4060)
+    const fights = (await (await fetch(api(`/fights?run=${runId}`))).json()) as Record<string, any>[]
+    const by = (key: string) => fights.find((f) => f.key === key)!
+
+    assert.equal(by('roark').cleared, true)
+    assert.equal(by('roark').clearedByBadge, true)
+    assert.equal(by('gardenia').cleared, true)
+    assert.equal(by('maylene').cleared, true)
+    assert.equal(by('wake').cleared, false, 'the 4th gym is still ahead at 3 badges')
+    // A Galactic fight in an already-passed tier is NOT settled by badges.
+    assert.equal(by('mars-windworks').cleared, false)
+    assert.equal(by('mars-windworks').clearedByBadge, false)
+  })
+
+  it('ticks a non-gym fight off for one run only, and untick restores it', async () => {
+    await upload({ trainerId: 4061, secretId: 61, badges: 1 })
+    const runA = await currentRunId(4061)
+    await upload({ trainerId: 4062, secretId: 62, badges: 1 })
+    const runB = await currentRunId(4062)
+
+    const fights = (await (await fetch(api(`/fights?run=${runA}`))).json()) as Record<string, any>[]
+    const mars = fights.find((f) => f.key === 'mars-windworks')!
+    assert.equal(mars.cleared, false)
+
+    assert.equal((await json(`/fights/${mars.id}/clear`, 'POST', { run_id: runA })).status, 201)
+
+    const afterA = (await (await fetch(api(`/fights?run=${runA}`))).json()) as Record<string, any>[]
+    assert.equal(afterA.find((f) => f.key === 'mars-windworks')!.cleared, true)
+
+    const afterB = (await (await fetch(api(`/fights?run=${runB}`))).json()) as Record<string, any>[]
+    assert.equal(afterB.find((f) => f.key === 'mars-windworks')!.cleared, false, 'cleared state is per-run')
+
+    const undone = await fetch(api(`/fights/${mars.id}/clear?run=${runA}`), { method: 'DELETE' })
+    assert.equal(undone.status, 204)
+    const restored = (await (await fetch(api(`/fights?run=${runA}`))).json()) as Record<string, any>[]
+    assert.equal(restored.find((f) => f.key === 'mars-windworks')!.cleared, false)
+  })
+
+  it('reports cleared state on /state for the run being shown', async () => {
+    await upload({ trainerId: 4063, secretId: 63, badges: 2 })
+    const runId = await currentRunId(4063)
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    const first = state.fights.find((f: { cleared: boolean }) => !f.cleared)
+    assert.equal(first.key, 'mars-windworks', 'first uncleared fight is what is next up')
+    assert.equal(state.fights.find((f: { key: string }) => f.key === 'gardenia').cleared, true)
+  })
+
+  it('validates clearing against a real fight and run', async () => {
+    const runId = await currentRunId(4063)
+    assert.equal((await json('/fights/999999/clear', 'POST', { run_id: runId })).status, 404)
+    const fights = (await (await fetch(api('/fights'))).json()) as { id: number }[]
+    assert.equal((await json(`/fights/${fights[0].id}/clear`, 'POST', { run_id: 99999 })).status, 400)
+    assert.equal((await fetch(api(`/fights/${fights[0].id}/clear`), { method: 'DELETE' })).status, 400)
+    assert.equal(
+      (await fetch(api(`/fights/${fights[0].id}/clear?run=${runId}`), { method: 'DELETE' })).status,
+      404,
+      'unticking something never ticked is a 404',
+    )
+  })
+
   it('adds and removes a custom fight', async () => {
     const res = await json('/fights', 'POST', { name: 'Barry — Canalave', location: 'Canalave City', badge_index: 5 })
     assert.equal(res.status, 201)

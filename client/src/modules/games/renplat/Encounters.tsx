@@ -14,6 +14,9 @@ interface Props {
 /**
  * The won half of encounter tracking is free — every living mon records where it
  * was met. Only the losses (fled, fainted, dupe-skipped) need typing in.
+ *
+ * Laid out as a dense grid rather than full-width rows: a route usually yields
+ * exactly one Pokémon, so a row per location is almost entirely empty space.
  */
 export default function Encounters({ encounters, graveLocations, onLog, onDelete }: Props) {
   const [location, setLocation] = useState('')
@@ -21,31 +24,41 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const used = new Set([...encounters.byLocation.map((e) => e.location), ...graveLocations, ...encounters.losses.map((l) => l.location)])
+  const used = new Set([
+    ...encounters.byLocation.map((e) => e.location),
+    ...graveLocations,
+    ...encounters.losses.map((l) => l.location),
+  ])
   const unused = SINNOH_LOCATIONS.filter((l) => !used.has(l))
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div>
         <SectionLabel>
-          Caught — {encounters.byLocation.length} {encounters.byLocation.length === 1 ? 'location' : 'locations'}
+          Caught — {encounters.byLocation.reduce((n, e) => n + e.mons.length, 0)} across{' '}
+          {encounters.byLocation.length} {encounters.byLocation.length === 1 ? 'location' : 'locations'}
         </SectionLabel>
-        <div className="flex flex-col gap-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5">
           {encounters.byLocation.map((entry) => (
             <div
               key={entry.location}
-              className="rounded-lg px-3 py-2 flex items-center gap-2"
+              className="rounded-lg px-2 py-1.5 flex items-center gap-1.5 min-w-0"
               style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
             >
-              <span className="text-xs w-40 shrink-0 truncate" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                {entry.location}
-              </span>
-              <div className="flex items-center gap-1 flex-wrap">
-                {entry.mons.map((m) => (
-                  <span key={m.pid} className="flex items-center" title={`${m.nickname} Lv ${m.level}`}>
-                    <Sprite species={m.species} size={28} />
-                  </span>
+              <div className="flex shrink-0 -space-x-2">
+                {entry.mons.slice(0, 3).map((m) => (
+                  <Sprite key={m.pid} species={m.species} size={30} />
                 ))}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                  {entry.location}
+                </div>
+                <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  {entry.mons.length > 1
+                    ? `${entry.mons.length} caught`
+                    : `${entry.mons[0].nickname} · Lv ${entry.mons[0].level}`}
+                </div>
               </div>
             </div>
           ))}
@@ -55,27 +68,40 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
 
       <div>
         <SectionLabel>Lost — {encounters.losses.length}</SectionLabel>
-        <div className="flex flex-col gap-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5">
           {encounters.losses.map((loss) => (
             <div
               key={loss.id}
-              className="rounded-lg px-3 py-2 flex items-center gap-2"
-              style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
+              className="group rounded-lg px-2 py-1.5 flex items-center gap-1.5 min-w-0"
+              style={{ background: '#151515', border: '1px solid rgba(255,255,255,0.05)' }}
+              title={loss.note ?? undefined}
             >
-              <span className="text-xs w-40 shrink-0 truncate" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                {loss.location}
-              </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)' }}>
-                {OUTCOME_LABELS[loss.outcome] ?? loss.outcome}
-              </span>
-              {loss.note && (
-                <span className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  {loss.note}
+              {loss.species ? (
+                <Sprite species={loss.species} size={30} dead />
+              ) : (
+                <span
+                  className="w-[30px] h-[30px] shrink-0 rounded flex items-center justify-center text-[11px]"
+                  style={{ background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.2)' }}
+                >
+                  ?
                 </span>
               )}
-              <span className="flex-1" />
-              <button onClick={() => onDelete(loss.id)} className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
-                remove
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  {loss.location}
+                </div>
+                <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  {OUTCOME_LABELS[loss.outcome] ?? loss.outcome}
+                  {loss.note ? ` · ${loss.note}` : ''}
+                </div>
+              </div>
+              <button
+                onClick={() => onDelete(loss.id)}
+                className="shrink-0 text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ color: 'rgba(255,255,255,0.3)' }}
+                title="Remove"
+              >
+                ×
               </button>
             </div>
           ))}
@@ -160,7 +186,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 )
 
 const Empty = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-xs py-3 text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>
+  <div className="text-xs py-3 col-span-full" style={{ color: 'rgba(255,255,255,0.2)' }}>
     {children}
   </div>
 )

@@ -104,6 +104,44 @@ const UPDATE_FIGHT = db.prepare(
 const GET_FIGHT = db.prepare('SELECT * FROM renplat_fight WHERE id = ?')
 const DELETE_FIGHT = db.prepare('DELETE FROM renplat_fight WHERE id = ?')
 
+const LIST_CLEARED = db.prepare('SELECT fight_id FROM renplat_fight_cleared WHERE run_id = ?')
+const MARK_CLEARED = db.prepare(
+  'INSERT OR IGNORE INTO renplat_fight_cleared (run_id, fight_id) VALUES (?, ?)',
+)
+const UNMARK_CLEARED = db.prepare(
+  'DELETE FROM renplat_fight_cleared WHERE run_id = ? AND fight_id = ?',
+)
+
+interface FightRow extends Record<string, unknown> {
+  id: number
+  badge_award: number | null
+}
+
+/**
+ * A fight counts as cleared when it's ticked off for this run, or when it's a
+ * gym whose badge you already hold. Gyms therefore need no tapping at all.
+ */
+function decorateFights(runId: number | undefined, badges: number) {
+  const kills = new Map(
+    (DEATH_COUNTS_BY_FIGHT.all() as { fight_id: number; kills: number }[]).map((r) => [r.fight_id, r.kills]),
+  )
+  const ticked = new Set(
+    runId === undefined
+      ? []
+      : (LIST_CLEARED.all(runId) as { fight_id: number }[]).map((r) => r.fight_id),
+  )
+  return (LIST_FIGHTS.all() as unknown as FightRow[]).map((f) => {
+    const byBadge = f.badge_award !== null && badges >= f.badge_award
+    return {
+      ...f,
+      kills: kills.get(f.id) ?? 0,
+      cleared: ticked.has(f.id) || byBadge,
+      /** True when the badge count settles it, so the UI can't offer to un-tick. */
+      clearedByBadge: byBadge,
+    }
+  })
+}
+
 const LIST_LOSSES = db.prepare(
   'SELECT * FROM renplat_encounter_loss WHERE run_id = ? ORDER BY created_at DESC, id DESC',
 )
@@ -137,14 +175,8 @@ router.get('/state', (req: Request, res: Response) => {
   const deathsByRun = new Map(
     (DEATH_COUNT_BY_RUN.all() as { run_id: number; deaths: number }[]).map((r) => [r.run_id, r.deaths]),
   )
-  const killsByFight = new Map(
-    (DEATH_COUNTS_BY_FIGHT.all() as { fight_id: number; kills: number }[]).map((r) => [r.fight_id, r.kills]),
-  )
-  const fights = (LIST_FIGHTS.all() as Record<string, unknown>[]).map((f) => ({
-    ...f,
-    kills: killsByFight.get(f.id as number) ?? 0,
-  }))
   const runs = (LIST_RUNS.all() as unknown as RunRow[]).map((r) => ({ ...r, deaths: deathsByRun.get(r.id) ?? 0 }))
+  const fights = decorateFights(runId, snapshot?.badges ?? 0)
 
   if (!snapshot) {
     res.json({ run: null, snapshot: null, save: null, party: [], grave: [], pending: [], fights, runs, encounters: null, levelCaps: LEVEL_CAPS })
@@ -342,15 +374,40 @@ router.delete('/deaths/:id', (req: Request, res: Response) => {
   res.status(204).end()
 })
 
-router.get('/fights', (_req: Request, res: Response) => {
-  const kills = new Map(
-    (DEATH_COUNTS_BY_FIGHT.all() as { fight_id: number; kills: number }[]).map((r) => [r.fight_id, r.kills]),
-  )
-  const fights = (LIST_FIGHTS.all() as Record<string, unknown>[]).map((f) => ({
-    ...f,
-    kills: kills.get(f.id as number) ?? 0,
-  }))
-  res.json(fights)
+router.get('/fights', (req: Request, res: Response) => {
+  const runId = req.query.run ? Number(req.query.run) : undefined
+  const snapshot = (runId === undefined ? undefined : LATEST_SNAPSHOT.get(runId)) as SnapshotRow | undefined
+  res.json(decorateFights(runId, snapshot?.badges ?? 0))
+})
+
+// Tick a fight off for one run. Gyms don't need this — their badge settles it.
+router.post('/fights/:id/clear', (req: Request, res: Response) => {
+  const fight = GET_FIGHT.get(Number(req.params.id)) as Record<string, unknown> | undefined
+  if (!fight) {
+    res.status(404).json({ error: 'Fight not found' })
+    return
+  }
+  const runId = Number((req.body ?? {}).run_id)
+  if (!Number.isInteger(runId) || !GET_RUN.get(runId)) {
+    res.status(400).json({ error: 'run_id must reference an existing run' })
+    return
+  }
+  MARK_CLEARED.run(runId, fight.id as number)
+  res.status(201).json({ ok: true })
+})
+
+router.delete('/fights/:id/clear', (req: Request, res: Response) => {
+  const runId = Number(req.query.run)
+  if (!Number.isInteger(runId)) {
+    res.status(400).json({ error: 'run is required' })
+    return
+  }
+  const result = UNMARK_CLEARED.run(runId, Number(req.params.id))
+  if (result.changes === 0) {
+    res.status(404).json({ error: 'Fight was not marked cleared for that run' })
+    return
+  }
+  res.status(204).end()
 })
 
 router.post('/fights', (req: Request, res: Response) => {

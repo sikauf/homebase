@@ -48,9 +48,13 @@ export interface Fight {
   location: string | null
   badge_index: number | null
   sort_order: number
+  badge_award: number | null
   danger: number | null
   threat_note: string | null
   kills: number
+  cleared: boolean
+  /** Settled by the badge count (a gym you've beaten), so it can't be un-ticked. */
+  clearedByBadge: boolean
 }
 
 export interface Run {
@@ -173,6 +177,12 @@ export const createFight = (payload: { name: string; location?: string; badge_in
   send<Fight>('/fights', 'POST', payload)
 
 export const deleteFight = (id: number) => send<void>(`/fights/${id}`, 'DELETE')
+
+export const clearFight = (id: number, runId: number) =>
+  send<{ ok: true }>(`/fights/${id}/clear`, 'POST', { run_id: runId })
+
+export const unclearFight = (id: number, runId: number) =>
+  send<void>(`/fights/${id}/clear?run=${runId}`, 'DELETE')
 
 export const logEncounterLoss = (payload: {
   run_id: number

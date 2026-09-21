@@ -117,4 +117,28 @@ export const migrations: Migration[] = [
       })
     },
   },
+  {
+    // Which badge a gym hands you. Badge count alone can't say where you are
+    // *within* a tier, but it does settle the gyms definitively: holding 3
+    // badges means Roark, Gardenia and Maylene are behind you. Everything else
+    // (Galactic, rivals, the E4) gets cleared by hand.
+    id: 'renplat_fight_badge_award_v1',
+    up: (db) => {
+      db.exec('ALTER TABLE renplat_fight ADD COLUMN badge_award INTEGER')
+      const award = db.prepare('UPDATE renplat_fight SET badge_award = ? WHERE key = ?')
+      const GYMS = ['roark', 'gardenia', 'maylene', 'wake', 'fantina', 'byron', 'candice', 'volkner']
+      GYMS.forEach((key, i) => award.run(i + 1, key))
+    },
+  },
+  {
+    // Per-run, unlike the fight row itself: a threat note is worth keeping
+    // across attempts, "I've beaten this" is not.
+    id: 'renplat_fight_cleared_v1',
+    up: `CREATE TABLE IF NOT EXISTS renplat_fight_cleared (
+      run_id     INTEGER NOT NULL REFERENCES renplat_run(id) ON DELETE CASCADE,
+      fight_id   INTEGER NOT NULL REFERENCES renplat_fight(id) ON DELETE CASCADE,
+      cleared_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (run_id, fight_id)
+    )`,
+  },
 ]
