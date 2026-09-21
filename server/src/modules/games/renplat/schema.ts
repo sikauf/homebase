@@ -212,4 +212,38 @@ export const migrations: Migration[] = [
       ).run('cheryl-eterna-forest', 'Cheryl', 'Eterna Forest', 1, 16)
     },
   },
+  {
+    // The rival stops seeded by renplat_fight_rivals_v1 were reconstructed and
+    // largely wrong. Replaced wholesale with the real ones.
+    //
+    // Fantina also moves: her gym opens after the Lake Valor and Lake Verity
+    // events, so she has to sort after them for the Hearthome Gate Barry fight
+    // to sit "right after Fantina" and for the badge counts to stay coherent
+    // (everything between Wake and Fantina is at 4 badges, everything after her
+    // at 5).
+    id: 'renplat_fight_real_rivals_v1',
+    up: (db) => {
+      const drop = db.prepare("DELETE FROM renplat_fight WHERE key LIKE 'barry-%' OR key LIKE 'dawn-%'")
+      drop.run()
+
+      db.prepare('UPDATE renplat_fight SET sort_order = ? WHERE key = ?').run(82, 'fantina')
+
+      const insert = db.prepare(
+        `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      const RIVALS: [key: string, name: string, location: string, badges: number, order: number][] = [
+        ['barry-pastoria', 'Barry', 'Pastoria City', 3, 48], // right before Wake
+        ['dawn-207', 'Dawn', 'Route 207', 4, 52], // before the early Aaron fight
+        ['dawn-210', 'Dawn', 'Route 210', 4, 56], // after Wake
+        ['barry-hearthome-gate', 'Barry', 'Hearthome Gate', 5, 84], // right after Fantina
+        ['barry-canalave', 'Barry', 'Canalave City', 5, 88], // before Byron
+        ['dawn-gratitude', 'Dawn', 'Stone of Gratitude', 8, 154], // before the League Barry
+        ['barry-league', 'Barry', 'Pokémon League', 8, 156], // before Aaron
+      ]
+      for (const [key, name, location, badges, order] of RIVALS) {
+        insert.run(key, name, location, badges, order)
+      }
+    },
+  },
 ]

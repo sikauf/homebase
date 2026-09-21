@@ -299,9 +299,22 @@ describe('fights', () => {
     assert.ok(keys.includes('roark'))
     assert.ok(keys.includes('cynthia'))
     // Rivals interleave with the bosses by sort_order.
-    assert.ok(keys.includes('dawn-eterna-forest'))
     assert.ok(keys.includes('cheryl-eterna-forest'))
     assert.ok(!keys.includes('barry-floaroma'), 'there is no Barry fight in Floaroma Town')
+    // The rival stops, at their real places.
+    assert.ok(keys.indexOf('barry-pastoria') < keys.indexOf('wake'), 'Pastoria Barry is right before Wake')
+    assert.ok(keys.indexOf('dawn-207') < keys.indexOf('aaron-early'), 'Route 207 Dawn precedes the early Aaron')
+    assert.ok(keys.indexOf('dawn-210') > keys.indexOf('wake'), 'Route 210 Dawn is after Wake')
+    assert.ok(
+      keys.indexOf('barry-hearthome-gate') === keys.indexOf('fantina') + 1,
+      'Hearthome Gate Barry sits right after Fantina',
+    )
+    assert.ok(keys.indexOf('barry-canalave') < keys.indexOf('byron'), 'Canalave Barry precedes Byron')
+    assert.ok(keys.indexOf('dawn-gratitude') < keys.indexOf('barry-league'), 'Stone of Gratitude before League Barry')
+    assert.ok(keys.indexOf('barry-league') < keys.indexOf('aaron'), 'League Barry precedes Aaron')
+    // Fantina's gym opens after the lake events, so she sorts after them.
+    assert.ok(keys.indexOf('fantina') > keys.indexOf('saturn-valor'), 'Fantina follows Lake Valor')
+    assert.ok(keys.indexOf('fantina') > keys.indexOf('aaron-early'), 'and follows the early Aaron')
     assert.ok(
       keys.indexOf('cheryl-eterna-forest') < keys.indexOf('gardenia'),
       'Eterna Forest comes before the Eterna City gym',
@@ -351,20 +364,38 @@ describe('fights', () => {
 
   // Badge count alone can't say where you are inside a tier, so "next up" comes
   // from what's been cleared, not from the badge number.
-  it('auto-clears gyms whose badge you already hold, and only those', async () => {
+  // Beating a gym proves everything leading up to it is behind you, so the
+  // whole run of earlier fights clears with it.
+  it('clears every fight up to the last gym whose badge you hold', async () => {
     await upload({ trainerId: 4060, secretId: 60, badges: 3 })
     const runId = await currentRunId(4060)
     const fights = (await (await fetch(api(`/fights?run=${runId}`))).json()) as Record<string, any>[]
     const by = (key: string) => fights.find((f) => f.key === key)!
 
+    assert.equal(by('maylene').cleared, true, 'the 3rd gym itself')
     assert.equal(by('roark').cleared, true)
-    assert.equal(by('roark').clearedByBadge, true)
     assert.equal(by('gardenia').cleared, true)
-    assert.equal(by('maylene').cleared, true)
+    // Non-gym fights before Maylene come along for the ride.
+    assert.equal(by('mars-windworks').cleared, true)
+    assert.equal(by('mars-windworks').clearedByBadge, true)
+    assert.equal(by('cheryl-eterna-forest').cleared, true)
+    assert.equal(by('jupiter-eterna').cleared, true)
+    // Nothing past that gym is touched.
+    assert.equal(by('mansion-double').cleared, false, 'the Route 212 mansion is still ahead')
+    assert.equal(by('barry-pastoria').cleared, false)
     assert.equal(by('wake').cleared, false, 'the 4th gym is still ahead at 3 badges')
-    // A Galactic fight in an already-passed tier is NOT settled by badges.
-    assert.equal(by('mars-windworks').cleared, false)
-    assert.equal(by('mars-windworks').clearedByBadge, false)
+
+    const maylene = by('maylene').sort_order
+    for (const f of fights) {
+      assert.equal(f.clearedByBadge, f.sort_order <= maylene, `${f.key} cleared-by-badge follows sort order`)
+    }
+  })
+
+  it('clears nothing from badges alone before the first gym', async () => {
+    await upload({ trainerId: 4064, secretId: 64, badges: 0 })
+    const runId = await currentRunId(4064)
+    const fights = (await (await fetch(api(`/fights?run=${runId}`))).json()) as Record<string, any>[]
+    assert.ok(fights.every((f) => !f.clearedByBadge), 'no badges means no cascade')
   })
 
   it('ticks a non-gym fight off for one run only, and untick restores it', async () => {
@@ -396,7 +427,7 @@ describe('fights', () => {
     const runId = await currentRunId(4063)
     const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
     const first = state.fights.find((f: { cleared: boolean }) => !f.cleared)
-    assert.equal(first.key, 'mars-windworks', 'first uncleared fight is what is next up')
+    assert.equal(first.key, 'jupiter-eterna', 'first uncleared fight is what is next up')
     assert.equal(state.fights.find((f: { key: string }) => f.key === 'gardenia').cleared, true)
   })
 

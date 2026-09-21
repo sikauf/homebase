@@ -123,11 +123,14 @@ const UNMARK_CLEARED = db.prepare(
 interface FightRow extends Record<string, unknown> {
   id: number
   badge_award: number | null
+  sort_order: number
 }
 
 /**
- * A fight counts as cleared when it's ticked off for this run, or when it's a
- * gym whose badge you already hold. Gyms therefore need no tapping at all.
+ * A fight counts as cleared when it's ticked off for this run, or when a gym you
+ * already hold the badge for sits at or after it in the order — beating a gym
+ * means everything leading up to it is behind you, so the whole run of fights
+ * before it clears at once rather than needing a tap each.
  */
 function decorateFights(runId: number | undefined, badges: number) {
   const kills = new Map(
@@ -138,8 +141,16 @@ function decorateFights(runId: number | undefined, badges: number) {
       ? []
       : (LIST_CLEARED.all(runId) as { fight_id: number }[]).map((r) => r.fight_id),
   )
-  return (LIST_FIGHTS.all() as unknown as FightRow[]).map((f) => {
-    const byBadge = f.badge_award !== null && badges >= f.badge_award
+  const fights = LIST_FIGHTS.all() as unknown as FightRow[]
+
+  // The furthest point the badge count proves you've reached.
+  const clearedThrough = fights.reduce(
+    (max, f) => (f.badge_award !== null && badges >= f.badge_award ? Math.max(max, f.sort_order) : max),
+    -1,
+  )
+
+  return fights.map((f) => {
+    const byBadge = f.sort_order <= clearedThrough
     return {
       ...f,
       kills: kills.get(f.id) ?? 0,
