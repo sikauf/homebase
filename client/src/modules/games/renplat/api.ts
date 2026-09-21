@@ -142,6 +142,15 @@ export const fetchState = (runId?: number) =>
 
 export const fetchRuns = () => send<RunSummary[]>('/runs', 'GET')
 
+export interface Species {
+  id: number
+  name: string
+  types: string[]
+}
+
+/** All 493 species, for the pickers. Served from the parser's own name table. */
+export const fetchSpecies = () => send<Species[]>('/species', 'GET')
+
 /** Reads the .sav as base64 and posts it; the server parses and stores it. */
 export async function uploadSave(file: File): Promise<UploadResult> {
   const bytes = new Uint8Array(await file.arrayBuffer())

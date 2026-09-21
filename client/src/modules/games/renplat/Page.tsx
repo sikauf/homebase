@@ -293,8 +293,8 @@ export default function RenegadePlatinum() {
               encounters={encounters}
               runId={run.id}
               graveLocations={grave.map((m) => m.metLocation)}
-              onLog={(location, outcome, note) =>
-                act(() => api.logEncounterLoss({ run_id: run.id, location, outcome, note }))
+              onLog={(location, outcome, note, species) =>
+                act(() => api.logEncounterLoss({ run_id: run.id, location, outcome, note, species }))
               }
               onDelete={(id) => act(() => api.deleteEncounterLoss(id))}
             />

@@ -1,6 +1,14 @@
 import { Router, Request, Response } from 'express'
 import db from '../../../db/client'
-import { parseSave, graveMons, InvalidSaveError, LEVEL_CAPS, type ParsedSave, type Mon } from './save'
+import {
+  parseSave,
+  graveMons,
+  speciesList,
+  InvalidSaveError,
+  LEVEL_CAPS,
+  type ParsedSave,
+  type Mon,
+} from './save'
 
 const router = Router()
 
@@ -273,6 +281,12 @@ router.post('/save', (req: Request, res: Response) => {
     overCap: save.party.filter((m) => m.level > save.levelCap).map((m) => m.nickname),
     pending: pendingDeaths(save, run.id),
   })
+})
+
+// Dex for the client's species pickers (logging a lost encounter, etc.).
+const SPECIES_LIST = speciesList()
+router.get('/species', (_req: Request, res: Response) => {
+  res.json(SPECIES_LIST)
 })
 
 router.get('/runs', (_req: Request, res: Response) => {

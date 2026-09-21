@@ -329,6 +329,17 @@ export function parseSave(buf: Buffer): ParsedSave {
   }
 }
 
+/**
+ * Dex number + name for all 493 species, for the client's species pickers.
+ * Served from the same table the parser resolves against, so there's one source
+ * of truth rather than a duplicated list in the client bundle.
+ */
+export function speciesList(): { id: number; name: string; types: string[] }[] {
+  return Object.entries(SPECIES)
+    .map(([id, info]) => ({ id: Number(id), name: info.name, types: info.types }))
+    .sort((a, b) => a.id - b.id)
+}
+
 /** The box a dead Pokémon gets dumped in. Matched case-insensitively. */
 export const GRAVE_BOX_NAME = 'grave'
 

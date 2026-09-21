@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import type { State } from './api'
+import { useEffect, useState } from 'react'
+import * as api from './api'
+import type { Species, State } from './api'
 import { Sprite } from './MonCard'
 import { OUTCOME_LABELS, SINNOH_LOCATIONS } from './data'
 
@@ -7,8 +8,50 @@ interface Props {
   encounters: NonNullable<State['encounters']>
   runId: number
   graveLocations: string[]
-  onLog: (location: string, outcome: string, note: string) => Promise<void>
+  onLog: (location: string, outcome: string, note: string, species: number | null) => Promise<void>
   onDelete: (id: number) => Promise<void>
+}
+
+/**
+ * Type-ahead over all 493 species. Resolves to a dex number so the logged loss
+ * can show the sprite; leaving it blank is fine — the row falls back to a "?".
+ */
+function SpeciesPicker({ species, value, onChange }: {
+  species: Species[]
+  value: string
+  onChange: (text: string) => void
+}) {
+  const matched = species.find((s) => s.name.toLowerCase() === value.trim().toLowerCase())
+  return (
+    <div className="flex items-center gap-1.5 flex-1 min-w-40">
+      <span className="shrink-0 w-10 h-10 flex items-center justify-center">
+        {matched ? (
+          <Sprite species={matched.id} size={40} />
+        ) : (
+          <span className="text-sm" style={{ color: 'rgba(255,255,255,0.15)' }}>?</span>
+        )}
+      </span>
+      <input
+        list="renplat-species"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Which Pokémon?"
+        className="flex-1 min-w-0 rounded-lg px-3 py-2 text-xs"
+        style={{
+          background: '#1a1a1a',
+          border: `1px solid ${
+            value.trim() && !matched ? 'rgba(220,90,90,0.4)' : 'rgba(255,255,255,0.08)'
+          }`,
+          color: 'rgba(255,255,255,0.92)',
+        }}
+      />
+      <datalist id="renplat-species">
+        {species.map((s) => (
+          <option key={s.id} value={s.name} />
+        ))}
+      </datalist>
+    </div>
+  )
 }
 
 /**
@@ -22,7 +65,18 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
   const [location, setLocation] = useState('')
   const [outcome, setOutcome] = useState('fled')
   const [note, setNote] = useState('')
+  const [speciesText, setSpeciesText] = useState('')
+  const [species, setSpecies] = useState<Species[]>([])
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api.fetchSpecies().then(setSpecies).catch(() => setSpecies([]))
+  }, [])
+
+  const matchedSpecies = species.find((s) => s.name.toLowerCase() === speciesText.trim().toLowerCase())
+  // A name typed but not recognised is a typo worth blocking on, rather than
+  // silently logging the loss with no Pokémon attached.
+  const speciesInvalid = speciesText.trim().length > 0 && !matchedSpecies
 
   const used = new Set([
     ...encounters.byLocation.map((e) => e.location),
@@ -91,8 +145,13 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
                   {loss.location}
                 </div>
                 <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  {OUTCOME_LABELS[loss.outcome] ?? loss.outcome}
-                  {loss.note ? ` · ${loss.note}` : ''}
+                  {[
+                    species.find((s) => s.id === loss.species)?.name,
+                    OUTCOME_LABELS[loss.outcome] ?? loss.outcome,
+                    loss.note,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </div>
               </div>
               <button
@@ -134,6 +193,7 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
               </option>
             ))}
           </select>
+          <SpeciesPicker species={species} value={speciesText} onChange={setSpeciesText} />
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -142,13 +202,15 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
             style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.92)' }}
           />
           <button
-            disabled={!location.trim() || saving}
+            disabled={!location.trim() || speciesInvalid || saving}
+            title={speciesInvalid ? `No Pokémon named "${speciesText.trim()}"` : undefined}
             onClick={async () => {
               setSaving(true)
               try {
-                await onLog(location.trim(), outcome, note.trim())
+                await onLog(location.trim(), outcome, note.trim(), matchedSpecies?.id ?? null)
                 setLocation('')
                 setNote('')
+                setSpeciesText('')
               } finally {
                 setSaving(false)
               }

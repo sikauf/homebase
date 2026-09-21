@@ -414,7 +414,51 @@ describe('fights', () => {
   })
 })
 
+describe('GET /api/games/renplat/species', () => {
+  it('serves all 493 species with names and types for the pickers', async () => {
+    const res = await fetch(api('/species'))
+    assert.equal(res.status, 200)
+    const list = (await res.json()) as { id: number; name: string; types: string[] }[]
+    assert.equal(list.length, 493)
+    assert.equal(list[0].id, 1)
+    assert.equal(list[0].name, 'Bulbasaur')
+    assert.equal(list.at(-1)!.id, 493)
+    assert.deepEqual(list.find((s) => s.id === 391)!.types, ['Fire', 'Fighting'])
+    // Sorted by dex number, so the picker reads in dex order.
+    assert.deepEqual(
+      list.map((s) => s.id),
+      [...list.map((s) => s.id)].sort((a, b) => a - b),
+    )
+  })
+})
+
 describe('encounters', () => {
+  it('keeps the species attached to a lost encounter', async () => {
+    await upload({ trainerId: 4070, secretId: 70 })
+    const runId = await currentRunId(4070)
+    const res = await json('/encounters', 'POST', {
+      run_id: runId,
+      location: 'Route 205',
+      species: 74,
+      outcome: 'fainted',
+      note: 'crit it by accident',
+    })
+    assert.equal(res.status, 201)
+
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    const loss = state.encounters.losses[0]
+    assert.equal(loss.species, 74)
+    assert.equal(loss.outcome, 'fainted')
+  })
+
+  it('accepts a lost encounter with no species', async () => {
+    const runId = await currentRunId(4070)
+    const res = await json('/encounters', 'POST', { run_id: runId, location: 'Route 206', outcome: 'fled' })
+    assert.equal(res.status, 201)
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    assert.equal(state.encounters.losses.find((l: { location: string }) => l.location === 'Route 206').species, null)
+  })
+
   it('logs and removes a lost encounter', async () => {
     await upload({ trainerId: 4030, secretId: 30 })
     const runId = await currentRunId(4030)
