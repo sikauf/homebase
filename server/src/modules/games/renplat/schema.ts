@@ -164,6 +164,21 @@ export const migrations: Migration[] = [
     },
   },
   {
+    // Two Renegade Platinum additions that aren't in vanilla's progression:
+    // Aaron turns up at Valor Lakefront long before the Elite Four (slotted
+    // just ahead of Saturn at the lake), and there's a double battle in the
+    // Route 212 mansion on the way to Pastoria.
+    id: 'renplat_fight_rp_extras_v1',
+    up: (db) => {
+      const insert = db.prepare(
+        `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      insert.run('mansion-double', 'Double battle — Mansion', 'Pokémon Mansion, Route 212', 3, 45)
+      insert.run('aaron-early', 'Aaron', 'Valor Lakefront', 4, 65)
+    },
+  },
+  {
     // Per-run, unlike the fight row itself: a threat note is worth keeping
     // across attempts, "I've beaten this" is not.
     id: 'renplat_fight_cleared_v1',

@@ -303,6 +303,15 @@ describe('fights', () => {
     assert.ok(keys.includes('dawn-jubilife'))
     assert.ok(keys.indexOf('barry-203') < keys.indexOf('gardenia'), 'Route 203 Barry comes before the 2nd gym')
     assert.ok(keys.indexOf('barry-league') > keys.indexOf('volkner'), 'the League rematch is last')
+    // Renegade Platinum's own additions, in their story slots.
+    assert.ok(keys.indexOf('mansion-double') < keys.indexOf('wake'), 'Route 212 mansion precedes Pastoria')
+    assert.ok(keys.indexOf('aaron-early') < keys.indexOf('saturn-valor'), 'early Aaron precedes Saturn')
+    assert.ok(keys.indexOf('aaron-early') < keys.indexOf('aaron'), 'and precedes the Elite Four Aaron')
+    assert.equal(fights.find((f) => f.key === 'aaron-early')!.badge_index, 4)
+    assert.equal(fights.find((f) => f.key === 'mansion-double')!.badge_index, 3)
+    // Neither is a gym, so neither is auto-cleared by a badge.
+    assert.equal(fights.find((f) => f.key === 'aaron-early')!.badge_award, null)
+    assert.equal(fights.find((f) => f.key === 'mansion-double')!.badge_award, null)
     assert.ok(keys.indexOf('roark') < keys.indexOf('volkner'), 'story order')
     assert.equal(fights.find((f) => f.key === 'roark')!.badge_index, 0)
     assert.equal(fights.find((f) => f.key === 'cynthia')!.badge_index, 8)
