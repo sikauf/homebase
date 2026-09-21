@@ -105,9 +105,19 @@ layout is the retail one).
   lets old snapshots be re-read.
 - Level caps by badge count live in `LEVEL_CAPS` (`save.ts`): 16, 26, 33, 39, 44,
   53, 56, 62, 78. Party members over the cap are flagged red.
-- `renplat_fight` is seeded with Platinum's boss progression (`renplat_fight_seed_v1`,
-  `INSERT OR IGNORE` on `key`, so edits and deletions stick). Threat notes and the
-  1–5 danger rating are yours to fill in; kill counts tally from linked deaths.
+- `renplat_fight` holds the fight list, transcribed from the Renegade Platinum
+  trainer spreadsheet's per-gym SPLIT sheets (`renplat_fight_from_spreadsheet_v1`).
+  **Use that spreadsheet as the source of truth — do not reconstruct fights from
+  vanilla Platinum.** It differs: the gym order is Roark, Gardenia, **Fantina**,
+  Maylene, Wake, Byron, Candice, Volkner (Fantina is 3rd), the companions (Cheryl,
+  Mira, Riley, Marley) are real fights, and Aaron turns up at Hearthome City Gate
+  long before the Elite Four. The migration upserts, so threat notes and danger
+  ratings survive; kill counts tally from linked deaths.
+  To re-read it: `curl -L "https://docs.google.com/spreadsheets/d/<id>/export?format=xlsx"`,
+  then parse `worksheets/sheet11.xml`..`sheet19.xml` (the SPLIT sheets) — column 1
+  carries locations and trainer names in order, and row 1 carries that split's level cap.
+- Clearing cascades: the furthest gym whose badge you hold clears every fight at or
+  before it in `sort_order`, since beating a gym proves the run-up is behind you.
 - Tests build real save buffers via `fixture.ts` (same encryption and shuffle the
   cartridge writes) rather than committing a 512KB binary.
 

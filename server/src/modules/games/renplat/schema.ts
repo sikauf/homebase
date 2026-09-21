@@ -213,37 +213,88 @@ export const migrations: Migration[] = [
     },
   },
   {
-    // The rival stops seeded by renplat_fight_rivals_v1 were reconstructed and
-    // largely wrong. Replaced wholesale with the real ones.
+    // Definitive fight list, transcribed from the Renegade Platinum trainer
+    // spreadsheet's per-gym SPLIT sheets. Everything seeded before this was
+    // reconstructed from vanilla Platinum and much of it was wrong — most
+    // importantly the gym order: this hack runs Roark, Gardenia, FANTINA,
+    // Maylene, Wake, Byron, Candice, Volkner, so Fantina is 3rd, not 5th.
     //
-    // Fantina also moves: her gym opens after the Lake Valor and Lake Verity
-    // events, so she has to sort after them for the Hearthome Gate Barry fight
-    // to sit "right after Fantina" and for the badge counts to stay coherent
-    // (everything between Wake and Fantina is at 4 badges, everything after her
-    // at 5).
-    id: 'renplat_fight_real_rivals_v1',
+    // `badge_index` is the badges held during that split, and lines up with the
+    // "LVL CAP" the sheet prints on each split sheet (16/26/33/39/44/53/56/62/78).
+    // Rivals who fight alongside you (Barry in the mansion double, Dawn/Lucas as
+    // partners) are not fights and are left out.
+    //
+    // Upserts rather than replaces, so threat notes and danger ratings already
+    // entered survive on any key that carries over.
+    id: 'renplat_fight_from_spreadsheet_v1',
     up: (db) => {
-      const drop = db.prepare("DELETE FROM renplat_fight WHERE key LIKE 'barry-%' OR key LIKE 'dawn-%'")
-      drop.run()
-
-      db.prepare('UPDATE renplat_fight SET sort_order = ? WHERE key = ?').run(82, 'fantina')
+      type Row = [key: string, name: string, location: string, badges: number, order: number, award: number | null]
+      const FIGHTS: Row[] = [
+        // ROARK SPLIT — 0 badges, cap 16
+        ['roark', 'Roark', 'Oreburgh Gym', 0, 100, 1],
+        // GARDENIA SPLIT — 1 badge, cap 26
+        ['mars-windworks', 'Commander Mars', 'Valley Windworks', 1, 200, null],
+        ['cheryl-eterna-forest', 'Cheryl', 'Eterna Forest', 1, 210, null],
+        ['gardenia', 'Gardenia', 'Eterna Gym', 1, 220, 2],
+        // FANTINA SPLIT — 2 badges, cap 33
+        ['jupiter-eterna', 'Commander Jupiter', 'Galactic Eterna Building 4F', 2, 300, null],
+        ['mira-wayward', 'Mira', 'Wayward Cave', 2, 310, null],
+        ['dawn-207', 'Dawn', 'Route 207', 2, 320, null],
+        ['aaron-early', 'Aaron', 'Hearthome City Gate West', 2, 330, null],
+        ['fantina', 'Fantina', 'Hearthome Gym', 2, 340, 3],
+        // MAYLENE SPLIT — 3 badges, cap 39
+        ['barry-hearthome-gate', 'Barry', 'Hearthome City Gate East', 3, 400, null],
+        ['mansion-double', 'Saturn & Backlot (double)', 'Pokémon Mansion, Route 212', 3, 410, null],
+        ['maylene', 'Maylene', 'Veilstone Gym', 3, 420, 4],
+        // WAKE SPLIT — 4 badges, cap 44
+        ['barry-pastoria', 'Barry', 'Pastoria City, at the gym door', 4, 500, null],
+        ['wake', 'Crasher Wake', 'Pastoria Gym', 4, 510, 5],
+        // BYRON SPLIT — 5 badges, cap 53
+        ['dawn-210', 'Dawn', 'Route 210 North', 5, 600, null],
+        ['cyrus-celestic', 'Cyrus', 'Celestic Town Ruins', 5, 610, null],
+        ['barry-canalave', 'Barry', 'Canalave City', 5, 620, null],
+        ['riley-iron-island', 'Riley', 'Iron Island', 5, 630, null],
+        ['byron', 'Byron', 'Canalave Gym', 5, 640, 6],
+        // CANDICE SPLIT — 6 badges, cap 56
+        ['saturn-lake-valor', 'Commander Saturn', 'Lake Valor', 6, 700, null],
+        ['mars-lake-verity', 'Commander Mars', 'Lake Verity', 6, 710, null],
+        ['candice', 'Candice', 'Snowpoint Gym', 6, 720, 7],
+        // VOLKNER SPLIT — 7 badges, cap 62
+        ['cyrus-hq', 'Cyrus', 'Galactic HQ 3F', 7, 800, null],
+        ['saturn-hq', 'Commander Saturn', 'Galactic HQ Laboratory', 7, 810, null],
+        ['mars-jupiter-spear', 'Mars & Jupiter (multi)', 'Galactic HQ', 7, 820, null],
+        ['cyrus-distortion', 'Cyrus', 'Distortion World (double)', 7, 830, null],
+        ['cyrus-distortion-2', 'Cyrus', 'Distortion World (single)', 7, 840, null],
+        ['volkner', 'Volkner', 'Sunyshore Gym', 7, 850, 8],
+        // CHAMPION SPLIT — 8 badges, cap 78
+        ['marley-victory-road', 'Marley', 'Victory Road', 8, 900, null],
+        ['dawn-gratitude', 'Dawn', 'Route 224, Stone of Gratitude', 8, 910, null],
+        ['barry-league', 'Barry', 'Pokémon League', 8, 920, null],
+        ['aaron', 'Aaron', 'Elite Four — Bug', 8, 930, null],
+        ['bertha', 'Bertha', 'Elite Four — Ground', 8, 940, null],
+        ['flint', 'Flint', 'Elite Four — Fire', 8, 950, null],
+        ['lucian', 'Lucian', 'Elite Four — Psychic', 8, 960, null],
+        ['cynthia', 'Cynthia', 'Champion', 8, 970, null],
+      ]
 
       const insert = db.prepare(
-        `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order, badge_award)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      const RIVALS: [key: string, name: string, location: string, badges: number, order: number][] = [
-        ['barry-pastoria', 'Barry', 'Pastoria City', 3, 48], // right before Wake
-        ['dawn-207', 'Dawn', 'Route 207', 4, 52], // before the early Aaron fight
-        ['dawn-210', 'Dawn', 'Route 210', 4, 56], // after Wake
-        ['barry-hearthome-gate', 'Barry', 'Hearthome Gate', 5, 84], // right after Fantina
-        ['barry-canalave', 'Barry', 'Canalave City', 5, 88], // before Byron
-        ['dawn-gratitude', 'Dawn', 'Stone of Gratitude', 8, 154], // before the League Barry
-        ['barry-league', 'Barry', 'Pokémon League', 8, 156], // before Aaron
-      ]
-      for (const [key, name, location, badges, order] of RIVALS) {
-        insert.run(key, name, location, badges, order)
+      const update = db.prepare(
+        `UPDATE renplat_fight SET name = ?, location = ?, badge_index = ?, sort_order = ?, badge_award = ?
+         WHERE key = ?`,
+      )
+      for (const [key, name, location, badges, order, award] of FIGHTS) {
+        insert.run(key, name, location, badges, order, award)
+        update.run(name, location, badges, order, award, key)
       }
+
+      // Drop everything the spreadsheet doesn't list, except fights added by hand.
+      const keep = FIGHTS.map(() => '?').join(', ')
+      db.prepare(
+        `DELETE FROM renplat_fight WHERE key NOT IN (${keep}) AND key NOT LIKE 'custom-%'`,
+      ).run(...FIGHTS.map(([key]) => key))
     },
   },
 ]

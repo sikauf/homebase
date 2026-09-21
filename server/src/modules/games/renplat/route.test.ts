@@ -293,52 +293,49 @@ describe('deaths', () => {
 })
 
 describe('fights', () => {
-  it('seeds the boss skeleton in story order with badge indexes', async () => {
+  it('matches the spreadsheet: gym order, level caps and the real fight list', async () => {
     const fights = (await (await fetch(api('/fights'))).json()) as Record<string, any>[]
     const keys = fights.map((f) => f.key)
-    assert.ok(keys.includes('roark'))
-    assert.ok(keys.includes('cynthia'))
-    // Rivals interleave with the bosses by sort_order.
-    assert.ok(keys.includes('cheryl-eterna-forest'))
-    assert.ok(!keys.includes('barry-floaroma'), 'there is no Barry fight in Floaroma Town')
-    // The rival stops, at their real places.
-    assert.ok(keys.indexOf('barry-pastoria') < keys.indexOf('wake'), 'Pastoria Barry is right before Wake')
-    assert.ok(keys.indexOf('dawn-207') < keys.indexOf('aaron-early'), 'Route 207 Dawn precedes the early Aaron')
-    assert.ok(keys.indexOf('dawn-210') > keys.indexOf('wake'), 'Route 210 Dawn is after Wake')
-    assert.ok(
-      keys.indexOf('barry-hearthome-gate') === keys.indexOf('fantina') + 1,
-      'Hearthome Gate Barry sits right after Fantina',
+    const by = (key: string) => fights.find((f) => f.key === key)!
+
+    // This hack's gym order is Roark, Gardenia, FANTINA, Maylene, Wake, ...
+    const gyms = fights.filter((f) => f.badge_award !== null)
+    assert.deepEqual(
+      gyms.map((f) => f.key),
+      ['roark', 'gardenia', 'fantina', 'maylene', 'wake', 'byron', 'candice', 'volkner'],
     )
+    assert.deepEqual(gyms.map((f) => f.badge_award), [1, 2, 3, 4, 5, 6, 7, 8])
+    // Each gym closes the split it belongs to, so its badge_index is the cap
+    // that applied throughout.
+    for (const g of gyms) assert.equal(LEVEL_CAPS[g.badge_index], LEVEL_CAPS[g.badge_award - 1])
+
+    // Rival stops, at their spreadsheet places.
+    assert.equal(by('barry-hearthome-gate').badge_index, 3)
+    assert.ok(keys.indexOf('barry-hearthome-gate') > keys.indexOf('fantina'), 'Hearthome Gate Barry follows Fantina')
+    assert.ok(keys.indexOf('barry-pastoria') < keys.indexOf('wake'), 'Pastoria Barry precedes Wake')
     assert.ok(keys.indexOf('barry-canalave') < keys.indexOf('byron'), 'Canalave Barry precedes Byron')
-    assert.ok(keys.indexOf('dawn-gratitude') < keys.indexOf('barry-league'), 'Stone of Gratitude before League Barry')
     assert.ok(keys.indexOf('barry-league') < keys.indexOf('aaron'), 'League Barry precedes Aaron')
-    // Fantina's gym opens after the lake events, so she sorts after them.
-    assert.ok(keys.indexOf('fantina') > keys.indexOf('saturn-valor'), 'Fantina follows Lake Valor')
-    assert.ok(keys.indexOf('fantina') > keys.indexOf('aaron-early'), 'and follows the early Aaron')
-    assert.ok(
-      keys.indexOf('cheryl-eterna-forest') < keys.indexOf('gardenia'),
-      'Eterna Forest comes before the Eterna City gym',
-    )
-    assert.ok(keys.indexOf('cheryl-eterna-forest') > keys.indexOf('mars-windworks'), 'and after Windworks')
-    assert.ok(keys.indexOf('barry-league') > keys.indexOf('volkner'), 'the League rematch is last')
-    // Nothing rival-shaped sits ahead of Mars at Valley Windworks.
-    assert.ok(!keys.includes('barry-203'), 'the Route 203 Barry fight is dropped')
-    assert.ok(!keys.includes('dawn-jubilife'), 'the Jubilife Dawn fight is dropped')
-    const beforeMars = fights.slice(0, keys.indexOf('mars-windworks'))
-    assert.deepEqual(beforeMars.map((f) => f.key), ['roark'], 'only Roark precedes the first Mars fight')
-    // Renegade Platinum's own additions, in their story slots.
-    assert.ok(keys.indexOf('mansion-double') < keys.indexOf('wake'), 'Route 212 mansion precedes Pastoria')
-    assert.ok(keys.indexOf('aaron-early') < keys.indexOf('saturn-valor'), 'early Aaron precedes Saturn')
-    assert.ok(keys.indexOf('aaron-early') < keys.indexOf('aaron'), 'and precedes the Elite Four Aaron')
-    assert.equal(fights.find((f) => f.key === 'aaron-early')!.badge_index, 4)
-    assert.equal(fights.find((f) => f.key === 'mansion-double')!.badge_index, 3)
-    // Neither is a gym, so neither is auto-cleared by a badge.
-    assert.equal(fights.find((f) => f.key === 'aaron-early')!.badge_award, null)
-    assert.equal(fights.find((f) => f.key === 'mansion-double')!.badge_award, null)
-    assert.ok(keys.indexOf('roark') < keys.indexOf('volkner'), 'story order')
-    assert.equal(fights.find((f) => f.key === 'roark')!.badge_index, 0)
-    assert.equal(fights.find((f) => f.key === 'cynthia')!.badge_index, 8)
-    assert.equal(fights.find((f) => f.key === 'roark')!.threat_note, null)
+    assert.ok(keys.indexOf('dawn-207') < keys.indexOf('aaron-early'), 'Route 207 Dawn precedes the early Aaron')
+    assert.ok(keys.indexOf('dawn-210') > keys.indexOf('wake'), 'Route 210 Dawn follows Wake')
+    assert.ok(keys.indexOf('dawn-gratitude') < keys.indexOf('barry-league'), 'Stone of Gratitude precedes League Barry')
+
+    // The early Aaron is in the Fantina split, before her gym.
+    assert.equal(by('aaron-early').badge_index, 2)
+    assert.ok(keys.indexOf('aaron-early') < keys.indexOf('fantina'))
+
+    // Companions the hack makes you fight.
+    for (const k of ['cheryl-eterna-forest', 'mira-wayward', 'riley-iron-island', 'marley-victory-road']) {
+      assert.ok(keys.includes(k), `${k} is a real fight`)
+    }
+    // Reconstructed rows that the spreadsheet disproved are gone.
+    for (const k of ['barry-203', 'dawn-jubilife', 'barry-floaroma', 'barry-eterna', 'dawn-eterna-forest',
+                     'dawn-celestic', 'dawn-sunyshore', 'barry-victory-road', 'dawn-league',
+                     'saturn-valor', 'mars-verity', 'cyrus-spear', 'barry-hearthome']) {
+      assert.ok(!keys.includes(k), `${k} was invented and should be gone`)
+    }
+    // Sorted, and every row carries a badge_index.
+    assert.deepEqual(fights.map((f) => f.sort_order), [...fights.map((f) => f.sort_order)].sort((a, b) => a - b))
+    assert.ok(fights.every((f) => f.badge_index !== null))
   })
 
   it('records a threat note and danger rating', async () => {
@@ -372,22 +369,26 @@ describe('fights', () => {
     const fights = (await (await fetch(api(`/fights?run=${runId}`))).json()) as Record<string, any>[]
     const by = (key: string) => fights.find((f) => f.key === key)!
 
-    assert.equal(by('maylene').cleared, true, 'the 3rd gym itself')
+    assert.equal(by('fantina').cleared, true, 'the 3rd gym itself — Fantina, in this hack')
     assert.equal(by('roark').cleared, true)
     assert.equal(by('gardenia').cleared, true)
-    // Non-gym fights before Maylene come along for the ride.
+    // Non-gym fights before her come along for the ride.
     assert.equal(by('mars-windworks').cleared, true)
     assert.equal(by('mars-windworks').clearedByBadge, true)
     assert.equal(by('cheryl-eterna-forest').cleared, true)
     assert.equal(by('jupiter-eterna').cleared, true)
+    assert.equal(by('mira-wayward').cleared, true)
+    assert.equal(by('dawn-207').cleared, true)
+    assert.equal(by('aaron-early').cleared, true, 'the early Aaron sits inside the Fantina split')
     // Nothing past that gym is touched.
-    assert.equal(by('mansion-double').cleared, false, 'the Route 212 mansion is still ahead')
+    assert.equal(by('maylene').cleared, false, 'the 4th gym is still ahead at 3 badges')
+    assert.equal(by('mansion-double').cleared, false)
     assert.equal(by('barry-pastoria').cleared, false)
-    assert.equal(by('wake').cleared, false, 'the 4th gym is still ahead at 3 badges')
+    assert.equal(by('wake').cleared, false)
 
-    const maylene = by('maylene').sort_order
+    const third = by('fantina').sort_order
     for (const f of fights) {
-      assert.equal(f.clearedByBadge, f.sort_order <= maylene, `${f.key} cleared-by-badge follows sort order`)
+      assert.equal(f.clearedByBadge, f.sort_order <= third, `${f.key} cleared-by-badge follows sort order`)
     }
   })
 
