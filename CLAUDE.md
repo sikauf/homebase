@@ -81,7 +81,13 @@ layout is the retail one).
 - `data/*.json` — vendored name tables (species + types, moves, abilities, Gen-IV
   item indices, Gen-IV met locations, growth curves). Generated once from veekun's
   CSVs and PKHeX's Gen-IV location text; no runtime network calls.
-- Sprites: `client/public/games/renplat/sprites/<dex>.png`, 1–493.
+- Sprites: `client/public/games/renplat/sprites/<dex>.png`, 1–493; trainer portraits in
+  `trainers/<name>.png`, resolved from a fight's name (see `trainerSpriteUrl`).
+- Save snapshots come from the `renplat` zsh function (in `~/.zshrc`): it truncates
+  OpenEmu's DeSmuME `.dsv` battery save to its first 512KB — the raw save the parser
+  reads — and writes it to `$RENPLAT_SAVE_DIR` (`~/PokemonSaves/renplat/`) as
+  `renplat-YYYYMMDD-HHMM.sav`. Upload those through the tab; nothing reads them from
+  disk, so the folder is just an archive.
 - **Deaths use the Grave-box convention:** a mon in a PC box named `Grave` with no
   `renplat_death` row is a "pending death" the UI asks about. PID is the key, so
   boxing several mons before syncing works and nothing is ever auto-marked dead.
