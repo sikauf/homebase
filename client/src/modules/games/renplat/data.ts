@@ -57,6 +57,10 @@ export function formatPlaytime(seconds: number): string {
   return `${h}h ${String(m).padStart(2, '0')}m`
 }
 
+/** What to call a run: its name once it has one, the number until then. */
+export const runLabel = (run: { name: string | null; number: number }) =>
+  run.name?.trim() || `Run #${run.number}`
+
 /** Natural-order compare, so "Route 9" sorts before "Route 10". */
 export const byName = (a: string, b: string) =>
   a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })

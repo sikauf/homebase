@@ -311,6 +311,141 @@ async function currentRunId(trainerId: number): Promise<number> {
   return runs.find((r) => r.trainer_id === trainerId)!.id
 }
 
+describe('run names', () => {
+  it('renames a run and falls back to the number when blanked', async () => {
+    await upload({ trainerId: 4090, secretId: 90, party: [monferno] })
+    const runId = await currentRunId(4090)
+
+    const named = await json(`/runs/${runId}`, 'PATCH', { name: '  The Infernape one  ' })
+    assert.equal(named.status, 200)
+    assert.equal(((await named.json()) as Record<string, any>).name, 'The Infernape one', 'trimmed')
+
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    assert.equal(state.run.name, 'The Infernape one')
+    assert.equal(
+      (((await (await fetch(api('/runs'))).json()) as Record<string, any>[]).find((r) => r.id === runId))!.name,
+      'The Infernape one',
+      'the runs list carries the name too',
+    )
+
+    // Blank means "no name", not an empty title.
+    const cleared = await json(`/runs/${runId}`, 'PATCH', { name: '   ' })
+    assert.equal(((await cleared.json()) as Record<string, any>).name, null)
+  })
+
+  it('rejects a non-string name and an unknown run', async () => {
+    await upload({ trainerId: 4091, secretId: 91, party: [monferno] })
+    const runId = await currentRunId(4091)
+    assert.equal((await json(`/runs/${runId}`, 'PATCH', { name: 7 })).status, 400)
+    assert.equal((await json('/runs/999999', 'PATCH', { name: 'nope' })).status, 404)
+  })
+})
+
+describe('memorable moments', () => {
+  const setup = async (trainerId: number, secretId: number) => {
+    await upload({
+      trainerId,
+      secretId,
+      party: [monferno, { pid: 0x700, species: 395, level: 30, metLocation: 19 }],
+    })
+    const runId = await currentRunId(trainerId)
+    const fights = (await (await fetch(api('/fights'))).json()) as { id: number; key: string }[]
+    return { runId, fight: (key: string) => fights.find((f) => f.key === key)! }
+  }
+
+  it('writes a moment against a fight and snapshots the team on request', async () => {
+    const { runId, fight } = await setup(4100, 100)
+    const res = await json('/moments', 'POST', {
+      run_id: runId,
+      fight_id: fight('maylene').id,
+      note: 'Won on 3 HP after a Drain Punch crit',
+      include_team: true,
+    })
+    assert.equal(res.status, 201)
+    const moment = (await res.json()) as Record<string, any>
+    assert.equal(moment.fight_id, fight('maylene').id)
+    assert.match(moment.note, /Drain Punch/)
+    assert.deepEqual(moment.team.map((m: { species: number }) => m.species), [391, 395])
+    assert.deepEqual(moment.team[0], { species: 391, nickname: 'Monferno', level: 26 })
+
+    // Served with the run, and standalone.
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    assert.equal(state.moments.length, 1)
+    assert.equal(state.moments[0].team.length, 2, 'the team comes back parsed, not as JSON text')
+    const listed = (await (await fetch(api(`/moments?run=${runId}`))).json()) as Record<string, any>[]
+    assert.equal(listed.length, 1)
+  })
+
+  it('leaves the team off when it is not asked for', async () => {
+    const { runId, fight } = await setup(4101, 101)
+    const res = await json('/moments', 'POST', {
+      run_id: runId,
+      fight_id: fight('roark').id,
+      note: 'Cranidos nearly ended it',
+    })
+    assert.equal(((await res.json()) as Record<string, any>).team, null)
+  })
+
+  it('keeps moments per run', async () => {
+    const a = await setup(4102, 102)
+    const b = await setup(4103, 103)
+    await json('/moments', 'POST', { run_id: a.runId, note: 'Run A story' })
+    await json('/moments', 'POST', { run_id: b.runId, note: 'Run B story' })
+
+    const forA = (await (await fetch(api(`/moments?run=${a.runId}`))).json()) as Record<string, any>[]
+    assert.deepEqual(forA.map((m) => m.note), ['Run A story'])
+  })
+
+  it('edits the note and fight, and can drop or retake the team', async () => {
+    const { runId, fight } = await setup(4104, 104)
+    const created = (await (
+      await json('/moments', 'POST', { run_id: runId, fight_id: fight('roark').id, note: 'first pass', include_team: true })
+    ).json()) as Record<string, any>
+
+    const edited = (await (
+      await json(`/moments/${created.id}`, 'PATCH', { fight_id: fight('wake').id, note: 'Floatzel, actually' })
+    ).json()) as Record<string, any>
+    assert.equal(edited.fight_id, fight('wake').id)
+    assert.equal(edited.note, 'Floatzel, actually')
+    assert.equal(edited.team.length, 2, 'editing a note leaves the captured team alone')
+
+    const dropped = (await (
+      await json(`/moments/${created.id}`, 'PATCH', { include_team: false })
+    ).json()) as Record<string, any>
+    assert.equal(dropped.team, null)
+
+    const retaken = (await (
+      await json(`/moments/${created.id}`, 'PATCH', { include_team: true })
+    ).json()) as Record<string, any>
+    assert.equal(retaken.team.length, 2)
+  })
+
+  it('takes a moment with no fight attached, but not an empty one', async () => {
+    const { runId } = await setup(4105, 105)
+    assert.equal((await json('/moments', 'POST', { run_id: runId, note: 'Just a nice bit of luck' })).status, 201)
+    assert.equal((await json('/moments', 'POST', { run_id: runId, note: '   ' })).status, 400)
+    assert.equal((await json('/moments', 'POST', { run_id: runId })).status, 400)
+  })
+
+  it('rejects an unknown run or fight', async () => {
+    const { runId } = await setup(4106, 106)
+    assert.equal((await json('/moments', 'POST', { run_id: 999999, note: 'nope' })).status, 400)
+    assert.equal((await json('/moments', 'POST', { run_id: runId, fight_id: 999999, note: 'nope' })).status, 400)
+    assert.equal((await fetch(api('/moments?run=999999'))).status, 400)
+  })
+
+  it('deletes a moment, and 404s on anything that touches it after', async () => {
+    const { runId } = await setup(4107, 107)
+    const moment = (await (
+      await json('/moments', 'POST', { run_id: runId, note: 'to be forgotten' })
+    ).json()) as Record<string, any>
+
+    assert.equal((await fetch(api(`/moments/${moment.id}`), { method: 'DELETE' })).status, 204)
+    assert.equal((await fetch(api(`/moments/${moment.id}`), { method: 'DELETE' })).status, 404)
+    assert.equal((await json(`/moments/${moment.id}`, 'PATCH', { note: 'gone' })).status, 404)
+  })
+})
+
 describe('deaths', () => {
   it('clears a pending death once confirmed, and tallies it against the fight', async () => {
     await upload({

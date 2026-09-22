@@ -21,6 +21,8 @@ interface RunRow {
   trainer_id: number
   secret_id: number
   trainer_name: string
+  /** What Sam calls this run; null falls back to "Run #N" in the UI. */
+  name: string | null
   status: string
   started_at: string
   ended_at: string | null
@@ -65,6 +67,19 @@ const END_RUN = db.prepare(
 const REOPEN_RUN = db.prepare(
   `UPDATE renplat_run SET status = 'active', ended_at = NULL, death_fight_id = NULL, post_mortem = NULL WHERE id = ?`,
 )
+const RENAME_RUN = db.prepare('UPDATE renplat_run SET name = ? WHERE id = ?')
+
+const LIST_MOMENTS = db.prepare(
+  'SELECT * FROM renplat_moment WHERE run_id = ? ORDER BY created_at ASC, id ASC',
+)
+const GET_MOMENT = db.prepare('SELECT * FROM renplat_moment WHERE id = ?')
+const INSERT_MOMENT = db.prepare(
+  'INSERT INTO renplat_moment (run_id, fight_id, note, team) VALUES (?, ?, ?, ?)',
+)
+const UPDATE_MOMENT = db.prepare(
+  'UPDATE renplat_moment SET fight_id = ?, note = ?, team = ? WHERE id = ?',
+)
+const DELETE_MOMENT = db.prepare('DELETE FROM renplat_moment WHERE id = ?')
 
 const INSERT_SNAPSHOT = db.prepare(
   `INSERT INTO renplat_snapshot (run_id, raw, parsed, badges, playtime_seconds, money, save_counter)
@@ -198,6 +213,36 @@ function pendingDeaths(save: ParsedSave, runId: number): Mon[] {
   return graveMons(save).filter((m) => !recorded.has(m.pid))
 }
 
+interface MomentRow {
+  id: number
+  run_id: number
+  fight_id: number | null
+  note: string
+  team: string | null
+  created_at: string
+}
+
+/** A party member as a moment remembers it — enough to draw the sprite row. */
+interface TeamMember {
+  species: number
+  nickname: string
+  level: number
+}
+
+const momentsForRun = (runId: number) =>
+  (LIST_MOMENTS.all(runId) as unknown as MomentRow[]).map((m) => ({
+    ...m,
+    team: m.team ? (JSON.parse(m.team) as TeamMember[]) : null,
+  }))
+
+/** The party as of the run's furthest-progress save, for "who was I fielding?". */
+function currentTeam(runId: number): TeamMember[] | null {
+  const snapshot = LATEST_SNAPSHOT.get(runId) as SnapshotRow | undefined
+  if (!snapshot) return null
+  const save = JSON.parse(snapshot.parsed) as ParsedSave
+  return save.party.map((m) => ({ species: m.species, nickname: m.nickname, level: m.level }))
+}
+
 router.get('/state', (req: Request, res: Response) => {
   const runParam = req.query.run
   const runId = runParam
@@ -212,7 +257,7 @@ router.get('/state', (req: Request, res: Response) => {
   const fights = decorateFights(runId, snapshot?.badges ?? 0)
 
   if (!snapshot) {
-    res.json({ run: null, snapshot: null, save: null, party: [], grave: [], pending: [], fights, runs, encounters: null, levelCaps: LEVEL_CAPS })
+    res.json({ run: null, snapshot: null, save: null, party: [], grave: [], pending: [], fights, runs, encounters: null, moments: [], levelCaps: LEVEL_CAPS })
     return
   }
 
@@ -273,6 +318,7 @@ router.get('/state', (req: Request, res: Response) => {
         ),
       losses: LIST_LOSSES.all(run.id),
     },
+    moments: momentsForRun(run.id),
     history: SNAPSHOT_HISTORY.all(run.id),
     fights,
     runs,
@@ -372,6 +418,102 @@ router.post('/runs/:id/reopen', (req: Request, res: Response) => {
   }
   REOPEN_RUN.run(run.id)
   res.json(GET_RUN.get(run.id))
+})
+
+// Rename a run. Blanking the name falls back to "Run #N" rather than storing
+// an empty string, so there's always something to show.
+router.patch('/runs/:id', (req: Request, res: Response) => {
+  const run = GET_RUN.get(Number(req.params.id)) as RunRow | undefined
+  if (!run) {
+    res.status(404).json({ error: 'Run not found' })
+    return
+  }
+  const { name } = (req.body ?? {}) as Record<string, unknown>
+  if (name !== null && typeof name !== 'string') {
+    res.status(400).json({ error: 'name must be a string or null' })
+    return
+  }
+  const trimmed = typeof name === 'string' ? name.trim().slice(0, 80) : ''
+  RENAME_RUN.run(trimmed || null, run.id)
+  res.json(GET_RUN.get(run.id))
+})
+
+// Memorable moments: a fight, what happened, and optionally the team you had
+// when it did. Only the run is required — a moment with no fight attached is a
+// fine thing to jot down.
+router.get('/moments', (req: Request, res: Response) => {
+  const runId = Number(req.query.run)
+  if (!Number.isInteger(runId) || !GET_RUN.get(runId)) {
+    res.status(400).json({ error: 'run must reference an existing run' })
+    return
+  }
+  res.json(momentsForRun(runId))
+})
+
+router.post('/moments', (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const runId = Number(body.run_id)
+  if (!Number.isInteger(runId) || !GET_RUN.get(runId)) {
+    res.status(400).json({ error: 'run_id must reference an existing run' })
+    return
+  }
+  const fightId = body.fight_id == null ? null : Number(body.fight_id)
+  if (fightId !== null && !GET_FIGHT.get(fightId)) {
+    res.status(400).json({ error: 'fight_id must reference an existing fight' })
+    return
+  }
+  const note = typeof body.note === 'string' ? body.note.trim() : ''
+  if (!note && fightId === null) {
+    res.status(400).json({ error: 'a moment needs a fight, a note, or both' })
+    return
+  }
+  // The team is captured here, not referenced: the snapshot moves on, the
+  // moment shouldn't.
+  const team = body.include_team ? currentTeam(runId) : null
+  const result = INSERT_MOMENT.run(runId, fightId, note, team ? JSON.stringify(team) : null)
+  const row = GET_MOMENT.get(result.lastInsertRowid) as unknown as MomentRow
+  res.status(201).json({ ...row, team: row.team ? JSON.parse(row.team) : null })
+})
+
+router.patch('/moments/:id', (req: Request, res: Response) => {
+  const id = Number(req.params.id)
+  const existing = GET_MOMENT.get(id) as unknown as MomentRow | undefined
+  if (!existing) {
+    res.status(404).json({ error: 'Moment not found' })
+    return
+  }
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const fightId =
+    body.fight_id === undefined ? existing.fight_id : body.fight_id == null ? null : Number(body.fight_id)
+  if (fightId !== null && !GET_FIGHT.get(fightId)) {
+    res.status(400).json({ error: 'fight_id must reference an existing fight' })
+    return
+  }
+  const note = body.note === undefined ? existing.note : String(body.note).trim()
+  if (!note && fightId === null) {
+    res.status(400).json({ error: 'a moment needs a fight, a note, or both' })
+    return
+  }
+  // include_team true re-takes the team as it stands now, false drops it, and
+  // leaving it out keeps whatever was captured when the moment was written.
+  const team =
+    body.include_team === undefined
+      ? existing.team
+      : body.include_team
+        ? JSON.stringify(currentTeam(existing.run_id) ?? [])
+        : null
+  UPDATE_MOMENT.run(fightId, note, team, id)
+  const row = GET_MOMENT.get(id) as unknown as MomentRow
+  res.json({ ...row, team: row.team ? JSON.parse(row.team) : null })
+})
+
+router.delete('/moments/:id', (req: Request, res: Response) => {
+  const result = DELETE_MOMENT.run(Number(req.params.id))
+  if (result.changes === 0) {
+    res.status(404).json({ error: 'Moment not found' })
+    return
+  }
+  res.status(204).end()
 })
 
 // Confirm a pending death (or re-attach a cause to one already recorded).

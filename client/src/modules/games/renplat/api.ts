@@ -66,6 +66,8 @@ export interface Run {
   trainer_id: number
   secret_id: number
   trainer_name: string
+  /** Sam's own name for the run; null means fall back to "Run #N". */
+  name: string | null
   status: 'active' | 'lost' | 'won'
   started_at: string
   ended_at: string | null
@@ -79,6 +81,22 @@ export interface RunSummary extends Run {
   playtime_seconds: number
   last_synced_at: string | null
   final_team: { species: number; nickname: string; level: number }[]
+}
+
+/** A party member as a moment remembers it — the team you had at the time. */
+export interface TeamMember {
+  species: number
+  nickname: string
+  level: number
+}
+
+export interface Moment {
+  id: number
+  run_id: number
+  fight_id: number | null
+  note: string
+  team: TeamMember[] | null
+  created_at: string
 }
 
 export interface EncounterLoss {
@@ -110,6 +128,7 @@ export interface State {
   pending: Mon[]
   deaths: Death[]
   encounters: { byLocation: { location: string; mons: EncounterMon[] }[]; losses: EncounterLoss[] } | null
+  moments: Moment[]
   history: { id: number; uploaded_at: string; badges: number; playtime_seconds: number; money: number }[]
   fights: Fight[]
   runs: Run[]
@@ -205,6 +224,23 @@ export const logEncounterLoss = (payload: {
 }) => send<EncounterLoss>('/encounters', 'POST', payload)
 
 export const deleteEncounterLoss = (id: number) => send<void>(`/encounters/${id}`, 'DELETE')
+
+export const renameRun = (id: number, name: string) =>
+  send<Run>(`/runs/${id}`, 'PATCH', { name })
+
+export const createMoment = (payload: {
+  run_id: number
+  fight_id: number | null
+  note: string
+  include_team: boolean
+}) => send<Moment>('/moments', 'POST', payload)
+
+export const updateMoment = (
+  id: number,
+  payload: { fight_id?: number | null; note?: string; include_team?: boolean },
+) => send<Moment>(`/moments/${id}`, 'PATCH', payload)
+
+export const deleteMoment = (id: number) => send<void>(`/moments/${id}`, 'DELETE')
 
 export const endRun = (id: number, payload: { status: 'lost' | 'won'; fight_id?: number | null; post_mortem?: string }) =>
   send<Run>(`/runs/${id}/end`, 'POST', payload)

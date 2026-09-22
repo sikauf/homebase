@@ -118,6 +118,13 @@ layout is the retail one).
   carries locations and trainer names in order, and row 1 carries that split's level cap.
 - Clearing cascades: the furthest gym whose badge you hold clears every fight at or
   before it in `sort_order`, since beating a gym proves the run-up is behind you.
+- Runs carry an optional `name` (`renplat_run.name`, `PATCH /runs/:id`); the UI falls
+  back to "Run #N" via `runLabel`, and the name is editable in place wherever it shows.
+- `renplat_moment` is the per-run scrapbook (Moments tab): an optional fight, a note,
+  and an optional team snapshot. The team is stored as its own JSON on the row rather
+  than pointing at a snapshot, so it stays the party you had at that moment;
+  `include_team` on POST/PATCH captures it from the run's latest snapshot (PATCH
+  `false` drops it, omitted keeps it).
 - Tests build real save buffers via `fixture.ts` (same encryption and shuffle the
   cartridge writes) rather than committing a 512KB binary.
 

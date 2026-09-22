@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Fight, RunSummary } from './api'
 import { Sprite } from './MonCard'
+import RunName from './RunName'
 import { formatPlaytime } from './data'
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
   fights: Fight[]
   onEnd: (id: number, status: 'lost' | 'won', fightId: number | null, postMortem: string) => Promise<void>
   onReopen: (id: number) => Promise<void>
+  onRename: (id: number, name: string) => Promise<void>
 }
 
 const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
@@ -81,11 +83,12 @@ function EndRunPanel({ run, fights, onEnd, onClose }: {
   )
 }
 
-function RunCard({ run, fights, onEnd, onReopen }: {
+function RunCard({ run, fights, onEnd, onReopen, onRename }: {
   run: RunSummary
   fights: Fight[]
   onEnd: Props['onEnd']
   onReopen: Props['onReopen']
+  onRename: Props['onRename']
 }) {
   const [ending, setEnding] = useState(false)
   const style = STATUS_STYLE[run.status] ?? STATUS_STYLE.active
@@ -114,7 +117,7 @@ function RunCard({ run, fights, onEnd, onReopen }: {
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-sm text-white">Run #{run.number}</span>
+            <RunName run={run} onRename={onRename} className="font-bold text-sm text-white" />
             <span
               className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded"
               style={{ background: style.bg, color: style.color }}
@@ -169,7 +172,7 @@ function RunCard({ run, fights, onEnd, onReopen }: {
   )
 }
 
-export default function LostRuns({ runs, fights, onEnd, onReopen }: Props) {
+export default function LostRuns({ runs, fights, onEnd, onReopen, onRename }: Props) {
   if (runs.length === 0) {
     return (
       <div className="text-xs text-center py-8" style={{ color: 'rgba(255,255,255,0.25)' }}>
@@ -181,7 +184,14 @@ export default function LostRuns({ runs, fights, onEnd, onReopen }: Props) {
   return (
     <div className="flex flex-col gap-2">
       {runs.map((run) => (
-        <RunCard key={run.id} run={run} fights={fights} onEnd={onEnd} onReopen={onReopen} />
+        <RunCard
+          key={run.id}
+          run={run}
+          fights={fights}
+          onEnd={onEnd}
+          onReopen={onReopen}
+          onRename={onRename}
+        />
       ))}
     </div>
   )

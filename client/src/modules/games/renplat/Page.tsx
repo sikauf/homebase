@@ -8,9 +8,11 @@ import GraveModal from './GraveModal'
 import FightList from './FightList'
 import LostRuns from './LostRuns'
 import Encounters from './Encounters'
+import Moments from './Moments'
+import RunName from './RunName'
 import { CALCULATOR_URL, DOCS_URL, formatPlaytime } from './data'
 
-type Tab = 'fights' | 'runs' | 'encounters'
+type Tab = 'fights' | 'runs' | 'encounters' | 'moments'
 
 export default function RenegadePlatinum() {
   const [state, setState] = useState<State | null>(null)
@@ -73,13 +75,15 @@ export default function RenegadePlatinum() {
     )
   }
 
-  const { save, run, party, grave, pending, fights, levelCaps, encounters } = state
+  const { save, run, party, grave, pending, fights, levelCaps, encounters, moments } = state
   const badges = save?.badges ?? 0
   const levelCap = save?.levelCap ?? levelCaps[0]
   const highestLevel = party.reduce((max, m) => Math.max(max, m.level), 0)
   const overCapCount = party.filter((m) => m.level > levelCap).length
-  // Everything caught and still breathing — party plus boxes, minus the Grave box.
-  const aliveCount = encounters?.byLocation.reduce((n, e) => n + e.mons.length, 0) ?? 0
+  // Everything caught and still breathing — the encounter list keeps its dead,
+  // so they're filtered out here rather than counted as living.
+  const aliveCount =
+    encounters?.byLocation.reduce((n, e) => n + e.mons.filter((m) => !m.dead).length, 0) ?? 0
   const graveMon = grave.find((m) => m.pid === gravePid) ?? null
 
   return (
@@ -89,7 +93,7 @@ export default function RenegadePlatinum() {
         <div className="flex items-center gap-2 flex-wrap">
           {run && (
             <>
-              <span className="text-sm font-bold text-white">Run #{run.number}</span>
+              <RunName run={run} onRename={(id, name) => act(() => api.renameRun(id, name))} />
               <span
                 className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded"
                 style={
@@ -244,6 +248,7 @@ export default function RenegadePlatinum() {
               ['fights', `Trouble fights${fights.some((f) => f.kills > 0) ? '' : ''}`],
               ['runs', `Runs (${runs.length})`],
               ['encounters', 'Encounters'],
+              ['moments', `Moments${moments.length ? ` (${moments.length})` : ''}`],
             ] as [Tab, string][]
           ).map(([value, label]) => (
             <button
@@ -287,6 +292,7 @@ export default function RenegadePlatinum() {
               act(() => api.endRun(id, { status, fight_id: fightId, post_mortem: postMortem }))
             }
             onReopen={(id) => act(() => api.reopenRun(id))}
+            onRename={(id, name) => act(() => api.renameRun(id, name))}
           />
         )}
 
@@ -304,6 +310,26 @@ export default function RenegadePlatinum() {
           ) : (
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
               Upload a save to start tracking encounters.
+            </div>
+          ))}
+
+        {tab === 'moments' &&
+          (run ? (
+            <Moments
+              moments={moments}
+              fights={fights}
+              party={party.map((m) => ({ species: m.species, nickname: m.nickname, level: m.level }))}
+              onAdd={(fightId, note, includeTeam) =>
+                act(() =>
+                  api.createMoment({ run_id: run.id, fight_id: fightId, note, include_team: includeTeam }),
+                )
+              }
+              onUpdate={(id, payload) => act(() => api.updateMoment(id, payload))}
+              onDelete={(id) => act(() => api.deleteMoment(id))}
+            />
+          ) : (
+            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              Upload a save to open a run first.
             </div>
           ))}
       </div>

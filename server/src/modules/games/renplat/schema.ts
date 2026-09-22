@@ -309,4 +309,27 @@ export const migrations: Migration[] = [
       ).run('ace-trainer-215', 'Ace Trainer', 'Route 215', 3, 415, null)
     },
   },
+  {
+    // "Run #3" says nothing about which run it was. A name is optional — the
+    // number stays the fallback — so nothing has to be filled in to sync a save.
+    id: 'renplat_run_name_v1',
+    up: (db) => {
+      db.exec('ALTER TABLE renplat_run ADD COLUMN name TEXT')
+    },
+  },
+  {
+    // The bits of a run worth remembering: a fight, what happened, and
+    // optionally the team you were fielding at the time. The team is stored as
+    // its own JSON rather than pointing at a snapshot — snapshots are the
+    // furthest-progress save, so the team would drift away from the moment.
+    id: 'renplat_moment_v1',
+    up: `CREATE TABLE IF NOT EXISTS renplat_moment (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id     INTEGER NOT NULL REFERENCES renplat_run(id) ON DELETE CASCADE,
+      fight_id   INTEGER REFERENCES renplat_fight(id) ON DELETE SET NULL,
+      note       TEXT NOT NULL DEFAULT '',
+      team       TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+  },
 ]
