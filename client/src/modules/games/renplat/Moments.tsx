@@ -17,19 +17,37 @@ interface Props {
   onDelete: (id: number) => Promise<void>
 }
 
-/** The team you had at the time, drawn as the sprite row with levels. */
-function TeamRow({ team, size = 44 }: { team: TeamMember[]; size?: number }) {
+/**
+ * The team you had at the time, drawn as an overlapping sprite strip. The sprites
+ * carry a lot of transparent padding, so they're tucked into each other and the
+ * caller decides where the strip sits — on its own line it leaves a band of dead
+ * space beside it.
+ */
+function TeamRow({
+  team,
+  size = 40,
+  levels = true,
+  className = '',
+}: {
+  team: TeamMember[]
+  size?: number
+  /** Off for the small "this is what I'd attach" preview, where the badges are just noise. */
+  levels?: boolean
+  className?: string
+}) {
   return (
-    <div className="flex -space-x-2 mt-1.5">
+    <div className={`flex -space-x-1.5 ${className}`}>
       {team.map((m, i) => (
         <span key={i} className="relative" title={`${m.nickname} · Lv ${m.level}`}>
           <Sprite species={m.species} size={size} />
-          <span
-            className="absolute bottom-0 right-0.5 text-[9px] font-bold tabular-nums px-0.5 rounded"
-            style={{ background: 'rgba(0,0,0,0.7)', color: 'rgba(255,255,255,0.6)' }}
-          >
-            {m.level}
-          </span>
+          {levels && (
+            <span
+              className="absolute bottom-0 right-0.5 text-[9px] font-bold tabular-nums px-0.5 rounded"
+              style={{ background: 'rgba(0,0,0,0.7)', color: 'rgba(255,255,255,0.6)' }}
+            >
+              {m.level}
+            </span>
+          )}
         </span>
       ))}
     </div>
@@ -107,6 +125,9 @@ function MomentForm({
               ? `Attach my team (${party.length})`
               : 'No team to attach — upload a save'}
         </label>
+        {withTeam && !hadTeam && party.length > 0 && (
+          <TeamRow team={party} size={30} levels={false} className="shrink-0" />
+        )}
         <span className="flex-1" />
         {onCancel && (
           <button onClick={onCancel} className="text-[11px] px-2 py-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -123,7 +144,6 @@ function MomentForm({
           {saving ? 'Saving…' : moment ? 'Save' : 'Remember it'}
         </button>
       </div>
-      {withTeam && !hadTeam && party.length > 0 && <TeamRow team={party} size={36} />}
     </div>
   )
 }
@@ -156,20 +176,22 @@ function MomentCard({ moment, fights, party, onUpdate, onDelete }: {
 
   return (
     <div
-      className="group rounded-xl p-3 flex gap-3"
+      className="group rounded-xl p-3 flex items-center gap-3 flex-wrap"
       style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
     >
       {portrait && (
         <img
           src={portrait}
           alt=""
-          width={48}
-          height={48}
+          width={44}
+          height={44}
           className="shrink-0 self-start select-none"
           style={{ imageRendering: 'pixelated' }}
         />
       )}
-      <div className="min-w-0 flex-1">
+      {/* The note keeps the width it needs; the team only drops to its own line
+          once the card is too narrow to hold both. */}
+      <div className="min-w-0 flex-1" style={{ minWidth: '14rem' }}>
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-xs font-semibold" style={{ color: fight ? '#d2a03c' : 'rgba(255,255,255,0.4)' }}>
             {fight ? fight.name : 'No fight attached'}
@@ -204,8 +226,8 @@ function MomentCard({ moment, fights, party, onUpdate, onDelete }: {
             {moment.note}
           </div>
         )}
-        {moment.team && moment.team.length > 0 && <TeamRow team={moment.team} />}
       </div>
+      {moment.team && moment.team.length > 0 && <TeamRow team={moment.team} className="shrink-0" />}
     </div>
   )
 }
