@@ -186,6 +186,31 @@ function slotCounter(buf: Buffer, slot: number): number | null {
   return counter
 }
 
+/**
+ * Withdrawing a Pokémon doesn't clear the box slot it came from: the old record
+ * stays in the flash, frozen at the level it had when it went in. So the same
+ * PID can sit in the party *and* in a box, which double-counts the mon
+ * everywhere it's listed. The live copy wins — the party first, then, between
+ * two box copies, the Grave box (being dead is the claim worth keeping) and
+ * failing that the higher level, since the stale record is always the older one.
+ */
+function dropStaleCopies(party: Mon[], boxes: Box[]): Box[] {
+  const inParty = new Set(party.map((m) => m.pid))
+  const isGrave = (box: Box) => box.name.trim().toLowerCase() === GRAVE_BOX_NAME
+  const live = new Map<number, { box: Box; mon: Mon }>()
+
+  for (const box of boxes) {
+    for (const mon of box.mons) {
+      if (inParty.has(mon.pid)) continue
+      const held = live.get(mon.pid)
+      const wins = !held || (isGrave(box) !== isGrave(held.box) ? isGrave(box) : mon.level > held.mon.level)
+      if (wins) live.set(mon.pid, { box, mon })
+    }
+  }
+
+  return boxes.map((box) => ({ ...box, mons: box.mons.filter((mon) => live.get(mon.pid)?.mon === mon) }))
+}
+
 function decodeMon(record: Buffer): Mon | null {
   const pid = record.readUInt32LE(0)
   if (pid === 0) return null
@@ -325,7 +350,7 @@ export function parseSave(buf: Buffer): ParsedSave {
     playtime: { hours, minutes, seconds, total: hours * 3600 + minutes * 60 + seconds },
     saveCounter,
     party,
-    boxes,
+    boxes: dropStaleCopies(party, boxes),
   }
 }
 

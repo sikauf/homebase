@@ -94,6 +94,10 @@ layout is the retail one).
   The `renplat` function now checks for the general-block size magic (`0xCF2C` at
   `0xCF20` in either slot) and refuses to write a blank export. If the tab looks
   stale, the cause is almost always savestates instead of an in-game save.
+- **A withdrawn Pokémon leaves its old box record behind** in the save, frozen at the
+  level it was deposited at, so the same PID can appear in the party and in a box at
+  once. `dropStaleCopies` (`save.ts`) keeps the live copy — party first, then the Grave
+  box, then the higher level — otherwise every affected mon is counted twice.
 - **Deaths use the Grave-box convention:** a mon in a PC box named `Grave` with no
   `renplat_death` row is a "pending death" the UI asks about. PID is the key, so
   boxing several mons before syncing works and nothing is ever auto-marked dead.

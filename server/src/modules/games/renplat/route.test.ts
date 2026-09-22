@@ -2,7 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { setupTestServer } from '../../../shared/test-helpers'
 import { buildSave, asBase64, ERASED_COUNTER, type SaveSpec } from './fixture'
-import { parseSave, LEVEL_CAPS } from './save'
+import { parseSave, graveMons, LEVEL_CAPS } from './save'
 
 const baseUrl = setupTestServer()
 const api = (path: string) => `${baseUrl()}/api/games/renplat${path}`
@@ -63,6 +63,43 @@ describe('renplat save parsing', () => {
     )
     assert.equal(save.party[0].nickname, 'MATHEW')
     assert.equal(save.party[1].nickname, 'Monferno')
+  })
+
+  // Withdrawing a mon leaves its old box record in the flash, frozen at the
+  // level it went in with. Five of this run's six party members had one.
+  it('ignores the stale box record a withdrawn Pokemon leaves behind', () => {
+    const save = parseSave(
+      buildSave({
+        party: [monferno],
+        boxes: [
+          {
+            index: 0,
+            name: 'BOX 1',
+            mons: [
+              { pid: monferno.pid, species: 391, exp: 2700 }, // the leftover
+              { pid: 0x501, species: 133, exp: 5000 },
+            ],
+          },
+        ],
+      }),
+    )
+    assert.deepEqual(save.boxes[0].mons.map((m) => m.pid), [0x501], 'the party copy is the live one')
+    assert.equal(save.party[0].level, 26, 'and the party keeps its real level, not the deposited one')
+  })
+
+  it('keeps the Grave copy when a dead mon also has a stale record in another box', () => {
+    const save = parseSave(
+      buildSave({
+        party: [monferno],
+        boxes: [
+          { index: 0, name: 'BOX 1', mons: [{ pid: 0x777, species: 74, exp: 2700 }] },
+          { index: 8, name: 'Grave', mons: [{ pid: 0x777, species: 74, exp: 2700 }] },
+        ],
+      }),
+    )
+    assert.deepEqual(save.boxes[0].mons, [], 'the living-box copy is the stale one')
+    assert.deepEqual(save.boxes[8].mons.map((m) => m.pid), [0x777])
+    assert.deepEqual(graveMons(save).map((m) => m.pid), [0x777], 'so the death still registers')
   })
 
   it('picks the slot with the higher save counter', () => {
@@ -294,6 +331,29 @@ describe('GET /api/games/renplat/state', () => {
     assert.equal(route204.mons.length, 2, 'the dead one is still an encounter from Route 204')
     assert.deepEqual(route204.mons.map((m) => m.dead), [false, true], 'living leads the sprite stack')
     assert.deepEqual(route204.mons.map((m) => m.species), [396, 399])
+  })
+
+  it('counts a party mon once when a stale box copy is still in the save', async () => {
+    await upload({
+      trainerId: 4084,
+      secretId: 84,
+      party: [{ ...monferno, metLocation: 19 }], // Route 204
+      boxes: [
+        {
+          index: 0,
+          name: 'BOX 1',
+          // The record the game left behind when Monferno was withdrawn.
+          mons: [{ pid: monferno.pid, species: 391, exp: 2700, metLocation: 19 }],
+        },
+      ],
+    })
+    const runId = await currentRunId(4084)
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    const groups = state.encounters.byLocation as { location: string; mons: { pid: number }[] }[]
+
+    assert.equal(groups.reduce((n, g) => n + g.mons.length, 0), 1, 'one Monferno, not two')
+    assert.deepEqual(groups.map((g) => g.location), ['Route 204'])
+    assert.deepEqual(state.boxes, [], 'and the empty box drops out of the box list')
   })
 
   it('returns an empty shell before any save has been uploaded', async () => {
