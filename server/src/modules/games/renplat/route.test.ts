@@ -197,8 +197,9 @@ describe('GET /api/games/renplat/state', () => {
     assert.equal(body.grave[0].death, null, 'unconfirmed grave mon has no death row yet')
     assert.equal(body.pending.length, 1)
     // The Grave box is excluded from encounters — it lists living catches only.
+    // Monferno is the Chimchar line, so it groups under "Starter", not Route 201.
     const locations = body.encounters.byLocation.map((e: { location: string }) => e.location)
-    assert.deepEqual(locations.sort(), ['Route 201', 'Route 204'])
+    assert.deepEqual(locations.sort(), ['Route 204', 'Starter'])
     assert.ok(body.fights.length > 0, 'fights are seeded')
     assert.deepEqual(body.levelCaps, LEVEL_CAPS)
   })
@@ -214,6 +215,60 @@ describe('GET /api/games/renplat/state', () => {
     assert.equal(body.save.badges, 3)
     assert.equal(body.save.playtime.hours, 9)
     assert.equal(body.history.length, 2, 'the older snapshot is still in history')
+  })
+
+  it('gives the starter its own box instead of sharing its met location', async () => {
+    await upload({
+      trainerId: 4080,
+      secretId: 80,
+      // Monferno (Chimchar line) and Kricketune both met on Route 201.
+      party: [
+        { ...monferno, metLocation: 16 },
+        { pid: 0x402, species: 402, level: 26, metLocation: 16 },
+      ],
+    })
+    const runId = await currentRunId(4080)
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    const groups = state.encounters.byLocation as { location: string; mons: { species: number }[] }[]
+
+    assert.equal(groups[0].location, 'Starter', 'the starter box leads the list')
+    assert.deepEqual(groups[0].mons.map((m) => m.species), [391])
+    const route201 = groups.find((g) => g.location === 'Route 201')!
+    assert.deepEqual(route201.mons.map((m) => m.species), [402], 'Route 201 keeps only the real encounter')
+  })
+
+  it('leaves a starter-line Pokemon obtained elsewhere at its own location', async () => {
+    await upload({
+      trainerId: 4082,
+      secretId: 82,
+      party: [
+        { ...monferno, metLocation: 16 }, // the Route 201 starter
+        { pid: 0x394, species: 394, level: 20, metLocation: 2 }, // a gift Prinplup, Sandgem Town
+      ],
+    })
+    const runId = await currentRunId(4082)
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    const groups = state.encounters.byLocation as { location: string; mons: { species: number }[] }[]
+    assert.deepEqual(groups.find((g) => g.location === 'Starter')!.mons.map((m) => m.species), [391])
+    assert.deepEqual(groups.find((g) => g.location === 'Sandgem Town')!.mons.map((m) => m.species), [394])
+  })
+
+  it('sorts encounter locations naturally after the starter', async () => {
+    await upload({
+      trainerId: 4081,
+      secretId: 81,
+      party: [
+        { pid: 0x501, species: 402, level: 10, metLocation: 19 }, // Route 204
+        { pid: 0x502, species: 133, level: 10, metLocation: 16 }, // Route 201
+        { pid: 0x503, species: 74, level: 10, metLocation: 6 }, // Jubilife City
+      ],
+    })
+    const runId = await currentRunId(4081)
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    assert.deepEqual(
+      (state.encounters.byLocation as { location: string }[]).map((g) => g.location),
+      ['Jubilife City', 'Route 201', 'Route 204'],
+    )
   })
 
   it('returns an empty shell before any save has been uploaded', async () => {

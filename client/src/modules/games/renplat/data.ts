@@ -57,6 +57,10 @@ export function formatPlaytime(seconds: number): string {
   return `${h}h ${String(m).padStart(2, '0')}m`
 }
 
+/** Natural-order compare, so "Route 9" sorts before "Route 10". */
+export const byName = (a: string, b: string) =>
+  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+
 // Order drives the outcome dropdown; Fainted leads because it's the default.
 export const OUTCOME_LABELS: Record<string, string> = {
   fainted: 'Fainted',

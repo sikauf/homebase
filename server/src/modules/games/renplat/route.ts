@@ -162,12 +162,26 @@ function decorateFights(runId: number | undefined, badges: number) {
 }
 
 const LIST_LOSSES = db.prepare(
-  'SELECT * FROM renplat_encounter_loss WHERE run_id = ? ORDER BY created_at DESC, id DESC',
+  'SELECT * FROM renplat_encounter_loss WHERE run_id = ? ORDER BY location ASC, id ASC',
 )
 const INSERT_LOSS = db.prepare(
   'INSERT INTO renplat_encounter_loss (run_id, location, species, outcome, note) VALUES (?, ?, ?, ?, ?)',
 )
 const DELETE_LOSS = db.prepare('DELETE FROM renplat_encounter_loss WHERE id = ?')
+
+/** The three Sinnoh starter lines: Turtwig, Chimchar and Piplup, fully evolved. */
+const STARTER_FAMILY = new Set([387, 388, 389, 390, 391, 392, 393, 394, 395])
+/** Where the starter is handed to you — the one that isn't a route encounter. */
+const STARTER_MET_LOCATION = 'Route 201'
+export const STARTER_GROUP = 'Starter'
+
+/**
+ * Only the starter you picked, not every Sinnoh starter you own — this hack
+ * gifts others later (a Piplup from Sandgem Town, say), and those really were
+ * obtained where they say they were.
+ */
+const isStarter = (mon: Mon) =>
+  STARTER_FAMILY.has(mon.species) && mon.metLocation === STARTER_MET_LOCATION
 
 /** Runs are identified by the save's trainer ID pair — a fresh file is a new run. */
 function runForSave(save: ParsedSave): { run: RunRow; created: boolean } {
@@ -214,9 +228,13 @@ router.get('/state', (req: Request, res: Response) => {
   const caught = [...save.party, ...save.boxes.flatMap((b) => b.mons)].filter((m) => !graveIds.has(m.pid))
   const byLocation = new Map<string, Mon[]>()
   for (const mon of caught) {
-    const list = byLocation.get(mon.metLocation) ?? []
+    // A starter is a gift, not a route encounter — it's met on Route 201 and
+    // would otherwise sit in that route's box and make it look like two
+    // encounters came from there.
+    const where = isStarter(mon) ? STARTER_GROUP : mon.metLocation
+    const list = byLocation.get(where) ?? []
     list.push(mon)
-    byLocation.set(mon.metLocation, list)
+    byLocation.set(where, list)
   }
 
   res.setHeader('X-Save-Synced-At', snapshot.uploaded_at)
@@ -241,7 +259,13 @@ router.get('/state', (req: Request, res: Response) => {
     encounters: {
       byLocation: [...byLocation.entries()]
         .map(([location, mons]) => ({ location, mons }))
-        .sort((a, b) => a.location.localeCompare(b.location)),
+        .sort((a, b) =>
+          a.location === STARTER_GROUP
+            ? -1
+            : b.location === STARTER_GROUP
+              ? 1
+              : a.location.localeCompare(b.location, undefined, { numeric: true }),
+        ),
       losses: LIST_LOSSES.all(run.id),
     },
     history: SNAPSHOT_HISTORY.all(run.id),

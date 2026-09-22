@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import * as api from './api'
 import type { Species, State } from './api'
 import { Sprite } from './MonCard'
-import { OUTCOME_LABELS, SINNOH_LOCATIONS } from './data'
+import { byName, OUTCOME_LABELS, SINNOH_LOCATIONS } from './data'
 
 interface Props {
   encounters: NonNullable<State['encounters']>
@@ -84,7 +84,12 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
     ...graveLocations,
     ...encounters.losses.map((l) => l.location),
   ])
-  const unused = SINNOH_LOCATIONS.filter((l) => !used.has(l))
+  const unused = SINNOH_LOCATIONS.filter((l) => !used.has(l)).sort(byName)
+  const losses = [...encounters.losses].sort((a, b) => byName(a.location, b.location))
+  // "Starter" isn't a route, so it leads rather than sorting under S.
+  const caught = [...encounters.byLocation].sort((a, b) =>
+    a.location === 'Starter' ? -1 : b.location === 'Starter' ? 1 : byName(a.location, b.location),
+  )
 
   return (
     <div className="flex flex-col gap-5">
@@ -94,7 +99,7 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
           {encounters.byLocation.length} {encounters.byLocation.length === 1 ? 'location' : 'locations'}
         </SectionLabel>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
-          {encounters.byLocation.map((entry) => (
+          {caught.map((entry) => (
             <div
               key={entry.location}
               className="rounded-lg px-2 py-1.5 flex items-center gap-2 min-w-0"
@@ -124,7 +129,7 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
       <div>
         <SectionLabel>Lost — {encounters.losses.length}</SectionLabel>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
-          {encounters.losses.map((loss) => (
+          {losses.map((loss) => (
             <div
               key={loss.id}
               className="group rounded-lg px-2 py-1.5 flex items-center gap-2 min-w-0"
