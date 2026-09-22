@@ -142,6 +142,128 @@ export function MonHeader({ mon }: { mon: Mon }) {
   )
 }
 
+const fightLabel = (f: Fight) => `${f.name}${f.location ? ` — ${f.location}` : ''}`
+
+/**
+ * The fight list runs to forty-odd entries, so a native dropdown means scrolling
+ * a wall of names to find the one that just killed you. Typing "may" or "215"
+ * gets there in two keystrokes instead. Empty stays "not a boss fight" — most
+ * deaths are wild ones.
+ */
+export function FightPicker({
+  fights,
+  fightId,
+  onFightId,
+}: {
+  fights: Fight[]
+  fightId: string
+  onFightId: (value: string) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(0)
+
+  const selected = fights.find((f) => String(f.id) === fightId)
+  const q = query.trim().toLowerCase()
+  const matches = q ? fights.filter((f) => fightLabel(f).toLowerCase().includes(q)) : fights
+  // Clearing back to a wild death is only offered when nothing is typed —
+  // "Not a boss fight" is noise under a search for Maylene.
+  const options: (Fight | null)[] = q ? matches : [null, ...matches]
+
+  function choose(option: Fight | null) {
+    onFightId(option ? String(option.id) : '')
+    setQuery('')
+    setOpen(false)
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (!open) return setOpen(true)
+      const next = active + (e.key === 'ArrowDown' ? 1 : -1)
+      setActive(Math.max(0, Math.min(options.length - 1, next)))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (open && options[active] !== undefined) choose(options[active])
+    } else if (e.key === 'Escape' && open) {
+      // The modal closes on Escape too — dismiss just the list first.
+      e.stopPropagation()
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div className="relative mb-3">
+      <input
+        value={open ? query : selected ? fightLabel(selected) : ''}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setActive(0)
+          setOpen(true)
+        }}
+        onFocus={() => {
+          setQuery('')
+          setActive(0)
+          setOpen(true)
+        }}
+        onBlur={() => setOpen(false)}
+        onKeyDown={onKeyDown}
+        placeholder="Search fights — leave empty for a wild death"
+        aria-label="What killed it?"
+        className="w-full rounded-lg px-3 py-2 pr-7 text-sm"
+        style={{ background: '#0c0c0c', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.92)' }}
+      />
+      {selected && !open && (
+        <button
+          type="button"
+          onClick={() => choose(null)}
+          aria-label="Clear fight"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-sm leading-none"
+          style={{ color: 'rgba(255,255,255,0.3)' }}
+        >
+          ×
+        </button>
+      )}
+
+      {open && (
+        <div
+          className="absolute left-0 right-0 top-full mt-1 z-10 max-h-48 overflow-y-auto rounded-lg py-1"
+          style={{ background: '#111', border: '1px solid rgba(255,255,255,0.12)' }}
+        >
+          {options.length === 0 && (
+            <div className="px-3 py-2 text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              No fight matches “{query.trim()}”.
+            </div>
+          )}
+          {options.map((option, i) => (
+            <button
+              key={option ? option.id : 'none'}
+              type="button"
+              // mousedown, not click: blur would close the list before a click lands.
+              onMouseDown={(e) => {
+                e.preventDefault()
+                choose(option)
+              }}
+              onMouseEnter={() => setActive(i)}
+              ref={(el) => {
+                // jsdom has no scrollIntoView, so guard rather than crash in tests.
+                if (el && i === active) el.scrollIntoView?.({ block: 'nearest' })
+              }}
+              className="block w-full text-left px-3 py-1.5 text-sm"
+              style={{
+                background: i === active ? 'rgba(255,255,255,0.07)' : 'transparent',
+                color: option ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.45)',
+              }}
+            >
+              {option ? fightLabel(option) : 'Not a boss fight'}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function DeathFields({
   fights,
   fightId,
@@ -160,20 +282,7 @@ export function DeathFields({
       <label className="block text-[10px] uppercase tracking-wider font-bold mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
         What killed it?
       </label>
-      <select
-        value={fightId}
-        onChange={(e) => onFightId(e.target.value)}
-        className="w-full rounded-lg px-3 py-2 text-sm mb-3"
-        style={{ background: '#0c0c0c', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.92)' }}
-      >
-        <option value="">Not a boss fight</option>
-        {fights.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.name}
-            {f.location ? ` — ${f.location}` : ''}
-          </option>
-        ))}
-      </select>
+      <FightPicker fights={fights} fightId={fightId} onFightId={onFightId} />
 
       <label className="block text-[10px] uppercase tracking-wider font-bold mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
         Note
