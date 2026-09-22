@@ -332,4 +332,15 @@ export const migrations: Migration[] = [
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`,
   },
+  {
+    // Sits just after Cyrus in the Celestic Town ruins (sort_order 610), the
+    // first of his fights. No location recorded — it's editable inline.
+    id: 'renplat_fight_darach_v1',
+    up: (db) => {
+      db.prepare(
+        `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order, badge_award)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run('darach-castle-valet', 'Castle Valet Darach', null, 5, 615, null)
+    },
+  },
 ]

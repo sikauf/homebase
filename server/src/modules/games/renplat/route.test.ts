@@ -643,6 +643,17 @@ describe('fights', () => {
     assert.ok(keys.indexOf('ace-trainer-215') < keys.indexOf('maylene'), 'and comes right before Maylene')
   })
 
+  it('puts Castle Valet Darach straight after the first Cyrus fight', async () => {
+    const fights = (await (await fetch(api('/fights'))).json()) as Record<string, any>[]
+    const keys = fights.map((f) => f.key)
+    const darach = fights.find((f) => f.key === 'darach-castle-valet')!
+
+    assert.equal(darach.name, 'Castle Valet Darach')
+    assert.equal(darach.badge_index, 5, 'same split as the Celestic Town Cyrus')
+    assert.ok(keys.indexOf('darach-castle-valet') > keys.indexOf('cyrus-celestic'), 'follows that Cyrus')
+    assert.ok(keys.indexOf('darach-castle-valet') < keys.indexOf('barry-canalave'), 'and precedes the rest of the split')
+  })
+
   it('records a threat note and danger rating', async () => {
     const fights = (await (await fetch(api('/fights'))).json()) as { id: number; key: string }[]
     const wake = fights.find((f) => f.key === 'wake')!
