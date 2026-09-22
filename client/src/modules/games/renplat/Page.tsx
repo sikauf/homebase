@@ -4,6 +4,7 @@ import * as api from './api'
 import type { Fight, Mon, RunSummary, State } from './api'
 import MonCard, { Sprite } from './MonCard'
 import DeathModal from './DeathModal'
+import GraveModal from './GraveModal'
 import FightList from './FightList'
 import LostRuns from './LostRuns'
 import Encounters from './Encounters'
@@ -18,6 +19,7 @@ export default function RenegadePlatinum() {
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [showDeaths, setShowDeaths] = useState(false)
+  const [gravePid, setGravePid] = useState<number | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -78,6 +80,7 @@ export default function RenegadePlatinum() {
   const overCapCount = party.filter((m) => m.level > levelCap).length
   // Everything caught and still breathing — party plus boxes, minus the Grave box.
   const aliveCount = encounters?.byLocation.reduce((n, e) => n + e.mons.length, 0) ?? 0
+  const graveMon = grave.find((m) => m.pid === gravePid) ?? null
 
   return (
     <GamePageShell title="Renegade Platinum">
@@ -226,7 +229,7 @@ export default function RenegadePlatinum() {
                 <StatLabel>Graveyard — {grave.length}</StatLabel>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {grave.map((mon) => (
-                    <GraveStone key={mon.pid} mon={mon} fights={fights} />
+                    <GraveStone key={mon.pid} mon={mon} fights={fights} onClick={() => setGravePid(mon.pid)} />
                   ))}
                 </div>
               </div>
@@ -325,6 +328,18 @@ export default function RenegadePlatinum() {
           onClose={() => setShowDeaths(false)}
         />
       )}
+
+      {graveMon && (
+        <GraveModal
+          mon={graveMon}
+          fights={fights}
+          onSave={async (death, fightId, note) => {
+            await api.updateDeath(death.id, { fight_id: fightId, note })
+            await load()
+          }}
+          onClose={() => setGravePid(null)}
+        />
+      )}
     </GamePageShell>
   )
 }
@@ -351,11 +366,20 @@ function Stat({ label, value, sub, accent }: { label: string; value: string; sub
   )
 }
 
-function GraveStone({ mon, fights }: { mon: Mon & { death: api.Death | null }; fights: Fight[] }) {
+function GraveStone({
+  mon,
+  fights,
+  onClick,
+}: {
+  mon: Mon & { death: api.Death | null }
+  fights: Fight[]
+  onClick: () => void
+}) {
   const killer = fights.find((f) => f.id === mon.death?.fight_id)
   return (
-    <div
-      className="rounded-xl p-2 flex items-center gap-2 max-w-64"
+    <button
+      onClick={onClick}
+      className="rounded-xl p-2 flex items-center gap-2 max-w-64 text-left hover:brightness-125"
       style={{ background: '#151515', border: '1px solid rgba(255,255,255,0.05)' }}
       title={mon.death?.note ?? undefined}
     >
@@ -372,8 +396,13 @@ function GraveStone({ mon, fights }: { mon: Mon & { death: api.Death | null }; f
             {killer.name}
           </div>
         )}
+        {mon.death?.note && (
+          <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
+            “{mon.death.note}”
+          </div>
+        )}
       </div>
-    </div>
+    </button>
   )
 }
 
