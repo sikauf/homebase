@@ -222,18 +222,19 @@ router.get('/state', (req: Request, res: Response) => {
   const deathByPid = new Map(deaths.map((d) => [d.pid, d]))
 
   // Every mon caught this run, grouped by where it was met — the free half of
-  // encounter tracking. The Grave box is excluded so it reads as "encounters
-  // that produced a living mon"; losses are logged by hand.
+  // encounter tracking. Grave-box mons stay in the list under a `dead` flag
+  // rather than vanishing: the encounter still happened, it just didn't last.
+  // Losses (fled, dupe-skipped, KO'd before the ball) are logged by hand.
   const graveIds = new Set(graveMons(save).map((m) => m.pid))
-  const caught = [...save.party, ...save.boxes.flatMap((b) => b.mons)].filter((m) => !graveIds.has(m.pid))
-  const byLocation = new Map<string, Mon[]>()
+  const caught = [...save.party, ...save.boxes.flatMap((b) => b.mons)]
+  const byLocation = new Map<string, (Mon & { dead: boolean })[]>()
   for (const mon of caught) {
     // A starter is a gift, not a route encounter — it's met on Route 201 and
     // would otherwise sit in that route's box and make it look like two
     // encounters came from there.
     const where = isStarter(mon) ? STARTER_GROUP : mon.metLocation
     const list = byLocation.get(where) ?? []
-    list.push(mon)
+    list.push({ ...mon, dead: graveIds.has(mon.pid) })
     byLocation.set(where, list)
   }
 
@@ -258,7 +259,11 @@ router.get('/state', (req: Request, res: Response) => {
     deaths,
     encounters: {
       byLocation: [...byLocation.entries()]
-        .map(([location, mons]) => ({ location, mons }))
+        // Living first, so the truncated sprite stack shows what you still have.
+        .map(([location, mons]) => ({
+          location,
+          mons: [...mons].sort((a, b) => Number(a.dead) - Number(b.dead)),
+        }))
         .sort((a, b) =>
           a.location === STARTER_GROUP
             ? -1

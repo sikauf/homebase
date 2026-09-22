@@ -28,6 +28,9 @@ export interface Mon {
   evs: Record<string, number>
 }
 
+/** A caught mon as the encounters view sees it: `dead` once it's in the Grave box. */
+export type EncounterMon = Mon & { dead: boolean }
+
 export interface Death {
   id: number
   run_id: number
@@ -106,7 +109,7 @@ export interface State {
   grave: (Mon & { death: Death | null })[]
   pending: Mon[]
   deaths: Death[]
-  encounters: { byLocation: { location: string; mons: Mon[] }[]; losses: EncounterLoss[] } | null
+  encounters: { byLocation: { location: string; mons: EncounterMon[] }[]; losses: EncounterLoss[] } | null
   history: { id: number; uploaded_at: string; badges: number; playtime_seconds: number; money: number }[]
   fights: Fight[]
   runs: Run[]

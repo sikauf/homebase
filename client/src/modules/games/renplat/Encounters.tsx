@@ -99,29 +99,45 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
           {encounters.byLocation.length} {encounters.byLocation.length === 1 ? 'location' : 'locations'}
         </SectionLabel>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
-          {caught.map((entry) => (
-            <div
-              key={entry.location}
-              className="rounded-lg px-2 py-1.5 flex items-center gap-2 min-w-0"
-              style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              <div className="flex shrink-0 -space-x-3">
-                {entry.mons.slice(0, 3).map((m) => (
-                  <Sprite key={m.pid} species={m.species} size={56} />
-                ))}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                  {entry.location}
+          {caught.map((entry) => {
+            // A location only greys out once nothing it gave you is left alive.
+            const allDead = entry.mons.every((m) => m.dead)
+            const buried = entry.mons.filter((m) => m.dead).length
+            return (
+              <div
+                key={entry.location}
+                className="rounded-lg px-2 py-1.5 flex items-center gap-2 min-w-0"
+                style={{
+                  background: allDead ? '#151515' : '#1a1a1a',
+                  border: `1px solid rgba(255,255,255,${allDead ? '0.04' : '0.06'})`,
+                }}
+              >
+                <div className="flex shrink-0 -space-x-3">
+                  {entry.mons.slice(0, 3).map((m) => (
+                    <Sprite key={m.pid} species={m.species} size={56} dead={m.dead} />
+                  ))}
                 </div>
-                <div className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  {entry.mons.length > 1
-                    ? `${entry.mons.length} caught`
-                    : `${entry.mons[0].nickname} · Lv ${entry.mons[0].level}`}
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="text-xs truncate"
+                    style={{ color: `rgba(255,255,255,${allDead ? '0.4' : '0.75'})` }}
+                  >
+                    {entry.location}
+                  </div>
+                  <div
+                    className="text-[10px] truncate"
+                    style={{ color: `rgba(255,255,255,${allDead ? '0.22' : '0.3'})` }}
+                  >
+                    {entry.mons.length > 1
+                      ? `${entry.mons.length} caught${buried ? ` · ${buried} dead` : ''}`
+                      : `${entry.mons[0].nickname} · Lv ${entry.mons[0].level}${
+                          entry.mons[0].dead ? ' · dead' : ''
+                        }`}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
           {encounters.byLocation.length === 0 && <Empty>Nothing caught yet.</Empty>}
         </div>
       </div>

@@ -196,10 +196,16 @@ describe('GET /api/games/renplat/state', () => {
     assert.equal(body.grave.length, 1)
     assert.equal(body.grave[0].death, null, 'unconfirmed grave mon has no death row yet')
     assert.equal(body.pending.length, 1)
-    // The Grave box is excluded from encounters — it lists living catches only.
+    // The Grave box still counts as an encounter, flagged dead rather than dropped.
     // Monferno is the Chimchar line, so it groups under "Starter", not Route 201.
-    const locations = body.encounters.byLocation.map((e: { location: string }) => e.location)
-    assert.deepEqual(locations.sort(), ['Route 204', 'Starter'])
+    const byLocation = body.encounters.byLocation as { location: string; mons: { dead: boolean }[] }[]
+    assert.deepEqual(byLocation.map((e) => e.location).sort(), ['Mt. Coronet', 'Route 204', 'Starter'])
+    const buried = byLocation.find((e) => e.location === 'Mt. Coronet')!
+    assert.deepEqual(buried.mons.map((m) => m.dead), [true], 'the Geodude in the Grave box reads as dead')
+    assert.deepEqual(
+      byLocation.find((e) => e.location === 'Route 204')!.mons.map((m) => m.dead),
+      [false],
+    )
     assert.ok(body.fights.length > 0, 'fights are seeded')
     assert.deepEqual(body.levelCaps, LEVEL_CAPS)
   })
@@ -269,6 +275,25 @@ describe('GET /api/games/renplat/state', () => {
       (state.encounters.byLocation as { location: string }[]).map((g) => g.location),
       ['Jubilife City', 'Route 201', 'Route 204'],
     )
+  })
+
+  it('keeps a dead mon at its encounter location, living ones first', async () => {
+    await upload({
+      trainerId: 4083,
+      secretId: 83,
+      party: [monferno, { pid: 0x601, species: 396, level: 12, metLocation: 19 }], // Route 204
+      boxes: [
+        { index: 8, name: 'Grave', mons: [{ pid: 0x602, species: 399, exp: 2700, metLocation: 19 }] },
+      ],
+    })
+    const runId = await currentRunId(4083)
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    const route204 = (state.encounters.byLocation as { location: string; mons: { species: number; dead: boolean }[] }[])
+      .find((g) => g.location === 'Route 204')!
+
+    assert.equal(route204.mons.length, 2, 'the dead one is still an encounter from Route 204')
+    assert.deepEqual(route204.mons.map((m) => m.dead), [false, true], 'living leads the sprite stack')
+    assert.deepEqual(route204.mons.map((m) => m.species), [396, 399])
   })
 
   it('returns an empty shell before any save has been uploaded', async () => {
