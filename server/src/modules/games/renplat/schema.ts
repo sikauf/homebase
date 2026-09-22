@@ -297,4 +297,16 @@ export const migrations: Migration[] = [
       ).run(...FIGHTS.map(([key]) => key))
     },
   },
+  {
+    // Route 215's Ace Trainer is the last thing standing between you and the
+    // Veilstone gym door, so it closes out the Maylene split (sort_order 415,
+    // between the mansion double at 410 and Maylene at 420).
+    id: 'renplat_fight_ace_trainer_215_v1',
+    up: (db) => {
+      db.prepare(
+        `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order, badge_award)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run('ace-trainer-215', 'Ace Trainer', 'Route 215', 3, 415, null)
+    },
+  },
 ]

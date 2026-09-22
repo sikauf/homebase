@@ -393,6 +393,17 @@ describe('fights', () => {
     assert.ok(fights.every((f) => f.badge_index !== null))
   })
 
+  it('puts the Route 215 Ace Trainer at the end of the Maylene split', async () => {
+    const fights = (await (await fetch(api('/fights'))).json()) as Record<string, any>[]
+    const keys = fights.map((f) => f.key)
+    const ace = fights.find((f) => f.key === 'ace-trainer-215')!
+
+    assert.equal(ace.location, 'Route 215')
+    assert.equal(ace.badge_index, 3, 'fought on 3 badges, inside the Maylene split')
+    assert.ok(keys.indexOf('ace-trainer-215') > keys.indexOf('mansion-double'), 'follows the mansion double')
+    assert.ok(keys.indexOf('ace-trainer-215') < keys.indexOf('maylene'), 'and comes right before Maylene')
+  })
+
   it('records a threat note and danger rating', async () => {
     const fights = (await (await fetch(api('/fights'))).json()) as { id: number; key: string }[]
     const wake = fights.find((f) => f.key === 'wake')!
