@@ -34,6 +34,7 @@ interface SnapshotRow {
   id: number
   run_id: number
   uploaded_at: string
+  raw: Uint8Array
   parsed: string
   badges: number
   playtime_seconds: number
@@ -213,6 +214,20 @@ function pendingDeaths(save: ParsedSave, runId: number): Mon[] {
   return graveMons(save).filter((m) => !recorded.has(m.pid))
 }
 
+/**
+ * Every snapshot keeps the raw .sav, so reads go through the parser again rather
+ * than trusting the JSON written at upload time — a parser fix then applies to
+ * the whole history at once. `parsed` is the fallback for a blob the current
+ * parser chokes on, so a bad read can never blank the dashboard.
+ */
+function saveFromSnapshot(snapshot: SnapshotRow): ParsedSave {
+  try {
+    return parseSave(Buffer.from(snapshot.raw))
+  } catch {
+    return JSON.parse(snapshot.parsed) as ParsedSave
+  }
+}
+
 interface MomentRow {
   id: number
   run_id: number
@@ -239,7 +254,7 @@ const momentsForRun = (runId: number) =>
 function currentTeam(runId: number): TeamMember[] | null {
   const snapshot = LATEST_SNAPSHOT.get(runId) as SnapshotRow | undefined
   if (!snapshot) return null
-  const save = JSON.parse(snapshot.parsed) as ParsedSave
+  const save = saveFromSnapshot(snapshot)
   return save.party.map((m) => ({ species: m.species, nickname: m.nickname, level: m.level }))
 }
 
@@ -262,7 +277,7 @@ router.get('/state', (req: Request, res: Response) => {
   }
 
   const run = GET_RUN.get(snapshot.run_id) as unknown as RunRow
-  const save = JSON.parse(snapshot.parsed) as ParsedSave
+  const save = saveFromSnapshot(snapshot)
   const deaths = LIST_DEATHS.all(run.id) as unknown as DeathRow[]
   const deathByPid = new Map(deaths.map((d) => [d.pid, d]))
 
@@ -381,7 +396,7 @@ router.get('/runs', (_req: Request, res: Response) => {
   )
   const runs = (LIST_RUNS.all() as unknown as RunRow[]).map((r) => {
     const snapshot = LATEST_SNAPSHOT.get(r.id) as SnapshotRow | undefined
-    const save = snapshot ? (JSON.parse(snapshot.parsed) as ParsedSave) : null
+    const save = snapshot ? saveFromSnapshot(snapshot) : null
     return {
       ...r,
       deaths: deathsByRun.get(r.id) ?? 0,

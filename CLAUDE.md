@@ -105,8 +105,9 @@ layout is the retail one).
   run #N+1. Ending a run is always a deliberate `POST /runs/:id/end`.
 - `GET /state` serves the **furthest-progress** snapshot for a run (highest
   playtime), not the newest upload, so uploading an old backup doesn't roll the
-  dashboard back. Every snapshot keeps its raw `.sav` blob, so improving the parser
-  lets old snapshots be re-read.
+  dashboard back. Reads re-parse the snapshot's raw `.sav` blob (`saveFromSnapshot`,
+  falling back to the stored `parsed` JSON only if the parser throws), so a parser
+  fix applies to the whole history without a backfill.
 - Level caps by badge count live in `LEVEL_CAPS` (`save.ts`): 16, 26, 33, 39, 44,
   53, 56, 62, 78. Party members over the cap are flagged red.
 - `renplat_fight` holds the fight list, transcribed from the Renegade Platinum

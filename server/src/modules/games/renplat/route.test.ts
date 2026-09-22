@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import db from '../../../db/client'
 import { setupTestServer } from '../../../shared/test-helpers'
 import { buildSave, asBase64, ERASED_COUNTER, type SaveSpec } from './fixture'
 import { parseSave, graveMons, LEVEL_CAPS } from './save'
@@ -354,6 +355,24 @@ describe('GET /api/games/renplat/state', () => {
     assert.equal(groups.reduce((n, g) => n + g.mons.length, 0), 1, 'one Monferno, not two')
     assert.deepEqual(groups.map((g) => g.location), ['Route 204'])
     assert.deepEqual(state.boxes, [], 'and the empty box drops out of the box list')
+  })
+
+  // The raw .sav is the source of truth on read, so a parser fix reaches saves
+  // that were uploaded before it — here faked by corrupting the stored JSON.
+  it('re-parses the stored save rather than trusting the JSON from upload time', async () => {
+    await upload({ trainerId: 4085, secretId: 85, badges: 4, party: [monferno] })
+    const runId = await currentRunId(4085)
+    db.prepare('UPDATE renplat_snapshot SET parsed = ? WHERE run_id = ?').run(
+      JSON.stringify({ trainerName: 'STALE', party: [], boxes: [], badges: 0, levelCap: 16 }),
+      runId,
+    )
+
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    assert.equal(state.save.trainerName, 'SAM', 'read from the blob, not the stale row')
+    assert.equal(state.party.length, 1)
+
+    const run = ((await (await fetch(api('/runs'))).json()) as Record<string, any>[]).find((r) => r.id === runId)!
+    assert.deepEqual(run.final_team.map((m: { species: number }) => m.species), [391])
   })
 
   it('returns an empty shell before any save has been uploaded', async () => {
