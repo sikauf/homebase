@@ -71,9 +71,12 @@ Platinum `.sav` files (Renegade Platinum is a Platinum ROM hack, so the save
 layout is the retail one).
 
 - `server/src/modules/games/renplat/save.ts` — the parser. Two 0x40000 slots, each
-  a general block (`0xCF2C`) then a storage block (`0x121E4`); the live slot is the
-  one with the higher **valid** save counter (`0xFFFFFFFF` means erased flash — real
-  saves in the wild have a slot like that, and trusting it reads garbage). Party at
+  a general block (`0xCF2C`) then a storage block (`0x121E4`). **Each block is picked
+  independently** (`newestBlock`): the game only rewrites storage when the PC changed,
+  so the newest general and newest storage blocks are often in different slots —
+  reading both from one slot served a stale PC and hid fresh Grave-box deaths. A block
+  is valid only if its footer size, counter (`0xFFFFFFFF` = erased flash) and CRC16
+  all check out. Party at
   general `+0xA0`, box data and box names in the storage block. Pokémon records are
   checksum-encrypted and PID-block-shuffled; party records carry a second
   PID-encrypted battle-stats block holding the level, so **boxed** mons get their
@@ -101,6 +104,9 @@ layout is the retail one).
 - **Deaths use the Grave-box convention:** a mon in a PC box named `Grave` with no
   `renplat_death` row is a "pending death" the UI asks about. PID is the key, so
   boxing several mons before syncing works and nothing is ever auto-marked dead.
+  `graveyard()` (`route.ts`) is the single place this is reconciled: death rows are the
+  record (a confirmed death stays in the Graveyard and counts as a dead encounter even
+  once it's gone from the save), Grave-box mons without a row are `pending`.
 - **Runs are keyed on the save's trainer ID + secret ID** — a fresh file auto-opens
   run #N+1. Ending a run is always a deliberate `POST /runs/:id/end`.
 - `GET /state` serves the **furthest-progress** snapshot for a run (highest

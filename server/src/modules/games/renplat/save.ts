@@ -7,8 +7,10 @@
 // and met locations resolve to Route 201 / Route 204 / Mt. Coronet.
 //
 // Layout: two 0x40000 save slots, each holding a "general" block (0xCF2C) then a
-// "storage" block (0x121E4). Each block ends in a footer carrying its own size
-// and a save counter; the slot with the higher *valid* counter is the live one.
+// "storage" block (0x121E4). Each block ends in a footer carrying its own size,
+// save counter and CRC. The game only rewrites the storage block when the PC
+// changed, so the two blocks are picked *independently* — the newest general
+// block and the newest storage block routinely live in different slots.
 
 import speciesData from './tables/species.json'
 import movesData from './tables/moves.json'
@@ -20,9 +22,12 @@ import growthData from './tables/growth.json'
 const SLOT_SIZE = 0x40000
 const GENERAL_SIZE = 0xcf2c
 const STORAGE_SIZE = 0x121e4
-// Footer: block size at (size - 0xC), save counter at (size - 0x14).
-const FOOTER_SIZE_AT = 0xc
+// Footer: save counter at (size - 0x14), block size at (size - 0xC), CRC16 of
+// everything before the footer at (size - 0x2).
+const FOOTER_LENGTH = 0x14
 const FOOTER_COUNTER_AT = 0x14
+const FOOTER_SIZE_AT = 0xc
+const FOOTER_CRC_AT = 0x2
 
 // General block (Platinum; the DP offsets are these minus 4).
 const OFF_TRAINER_NAME = 0x68
@@ -172,18 +177,48 @@ export interface ParsedSave {
   boxes: Box[]
 }
 
-/** A slot is only usable if its footer still advertises the right block size. */
-function slotCounter(buf: Buffer, slot: number): number | null {
-  const general = slot
-  const storage = slot + GENERAL_SIZE
-  if (storage + STORAGE_SIZE > buf.length) return null
-  if (buf.readUInt32LE(general + GENERAL_SIZE - FOOTER_SIZE_AT) !== GENERAL_SIZE) return null
-  if (buf.readUInt32LE(storage + STORAGE_SIZE - FOOTER_SIZE_AT) !== STORAGE_SIZE) return null
-  const counter = buf.readUInt32LE(general + GENERAL_SIZE - FOOTER_COUNTER_AT)
-  // 0xFFFFFFFF is erased flash, not a real counter — two of this run's own
-  // snapshots have a slot like that, and trusting it picks a garbage save.
+/** CRC-16/CCITT (poly 0x1021, init 0xFFFF) — the checksum Gen IV block footers carry. */
+export function crc16(data: Buffer): number {
+  let crc = 0xffff
+  for (const byte of data) {
+    crc ^= byte << 8
+    for (let bit = 0; bit < 8; bit++) crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff
+  }
+  return crc
+}
+
+/**
+ * The save counter of the block at `offset`, or null if the block isn't usable:
+ * wrong size in the footer, an erased counter (0xFFFFFFFF — two of this run's own
+ * snapshots have a slot like that, and trusting it reads garbage), or a CRC that
+ * doesn't match (a write the game never finished).
+ */
+function blockCounter(buf: Buffer, offset: number, size: number): number | null {
+  if (offset + size > buf.length) return null
+  if (buf.readUInt32LE(offset + size - FOOTER_SIZE_AT) !== size) return null
+  const counter = buf.readUInt32LE(offset + size - FOOTER_COUNTER_AT)
   if (counter === 0xffffffff) return null
+  if (crc16(buf.subarray(offset, offset + size - FOOTER_LENGTH)) !== buf.readUInt16LE(offset + size - FOOTER_CRC_AT)) {
+    return null
+  }
   return counter
+}
+
+/**
+ * The live copy of one block: whichever slot holds it with the higher valid
+ * counter. Chosen per block, never per slot — saving without touching the PC
+ * writes only a new general block, so after a box change the latest storage is
+ * often in the *other* slot. Reading both from the general block's slot served a
+ * PC from a save or more ago, and a mon just moved to the Grave box never showed.
+ */
+function newestBlock(buf: Buffer, offsetInSlot: number, size: number): { offset: number; counter: number } | null {
+  let best: { offset: number; counter: number } | null = null
+  for (const slot of [0, SLOT_SIZE]) {
+    const offset = slot + offsetInSlot
+    const counter = blockCounter(buf, offset, size)
+    if (counter !== null && (!best || counter > best.counter)) best = { offset, counter }
+  }
+  return best
 }
 
 /**
@@ -196,14 +231,13 @@ function slotCounter(buf: Buffer, slot: number): number | null {
  */
 function dropStaleCopies(party: Mon[], boxes: Box[]): Box[] {
   const inParty = new Set(party.map((m) => m.pid))
-  const isGrave = (box: Box) => box.name.trim().toLowerCase() === GRAVE_BOX_NAME
   const live = new Map<number, { box: Box; mon: Mon }>()
 
   for (const box of boxes) {
     for (const mon of box.mons) {
       if (inParty.has(mon.pid)) continue
       const held = live.get(mon.pid)
-      const wins = !held || (isGrave(box) !== isGrave(held.box) ? isGrave(box) : mon.level > held.mon.level)
+      const wins = !held || (isGraveBox(box) !== isGraveBox(held.box) ? isGraveBox(box) : mon.level > held.mon.level)
       if (wins) live.set(mon.pid, { box, mon })
     }
   }
@@ -298,15 +332,13 @@ export function parseSave(buf: Buffer): ParsedSave {
     throw new InvalidSaveError('Not a Platinum save file (expected 512KB)')
   }
 
-  const counters = [slotCounter(buf, 0), slotCounter(buf, SLOT_SIZE)]
-  if (counters[0] === null && counters[1] === null) {
+  const generalBlock = newestBlock(buf, 0, GENERAL_SIZE)
+  const storageBlock = newestBlock(buf, GENERAL_SIZE, STORAGE_SIZE)
+  if (!generalBlock || !storageBlock) {
     throw new InvalidSaveError('No valid save slot found — is this a Platinum .sav?')
   }
-  const slot = (counters[1] ?? -1) > (counters[0] ?? -1) ? SLOT_SIZE : 0
-  const saveCounter = counters[slot === 0 ? 0 : 1]!
-
-  const general = slot
-  const storage = slot + GENERAL_SIZE
+  const general = generalBlock.offset
+  const storage = storageBlock.offset
 
   const badgeBits = buf[general + OFF_BADGES]
   let badges = 0
@@ -348,7 +380,7 @@ export function parseSave(buf: Buffer): ParsedSave {
     badges,
     levelCap: LEVEL_CAPS[Math.min(badges, 8)],
     playtime: { hours, minutes, seconds, total: hours * 3600 + minutes * 60 + seconds },
-    saveCounter,
+    saveCounter: generalBlock.counter,
     party,
     boxes: dropStaleCopies(party, boxes),
   }
@@ -368,7 +400,8 @@ export function speciesList(): { id: number; name: string; types: string[] }[] {
 /** The box a dead Pokémon gets dumped in. Matched case-insensitively. */
 export const GRAVE_BOX_NAME = 'grave'
 
+export const isGraveBox = (box: Box) => box.name.trim().toLowerCase() === GRAVE_BOX_NAME
+
 export function graveMons(save: ParsedSave): Mon[] {
-  const box = save.boxes.find((b) => b.name.trim().toLowerCase() === GRAVE_BOX_NAME)
-  return box ? box.mons : []
+  return save.boxes.filter(isGraveBox).flatMap((b) => b.mons)
 }

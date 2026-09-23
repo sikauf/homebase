@@ -208,10 +208,64 @@ function runForSave(save: ParsedSave): { run: RunRow; created: boolean } {
   return { run: GET_RUN.get(result.lastInsertRowid) as unknown as RunRow, created: true }
 }
 
-/** Grave-box mons with no death row yet — the "confirm this death" queue. */
-function pendingDeaths(save: ParsedSave, runId: number): Mon[] {
-  const recorded = new Set((LIST_DEATHS.all(runId) as unknown as DeathRow[]).map((d) => d.pid))
-  return graveMons(save).filter((m) => !recorded.has(m.pid))
+const SPECIES_LIST = speciesList()
+const SPECIES_BY_ID = new Map(SPECIES_LIST.map((s) => [s.id, s]))
+
+/**
+ * A confirmed death whose mon isn't in this save any more (released, or the
+ * snapshot predates the Grave box) — rebuilt from what the death row kept so it
+ * still gets a headstone.
+ */
+function monFromDeath(death: DeathRow): Mon {
+  const species = SPECIES_BY_ID.get(death.species)
+  const blank = { hp: 0, atk: 0, def: 0, spe: 0, spa: 0, spd: 0 }
+  return {
+    pid: death.pid,
+    species: death.species,
+    name: species?.name ?? `#${death.species}`,
+    types: species?.types ?? [],
+    nickname: death.nickname ?? species?.name ?? `#${death.species}`,
+    level: death.level ?? 0,
+    hp: 0,
+    maxHp: 0,
+    nature: '',
+    ability: '',
+    heldItem: null,
+    metLocation: death.met_location ?? 'Unknown',
+    metLevel: 0,
+    shiny: false,
+    moves: [],
+    ivs: blank,
+    evs: blank,
+  }
+}
+
+/**
+ * The run's dead, reconciled between the save and the death log — the one place
+ * graveyard state is worked out, so the upload prompt, the Graveyard and the
+ * encounters list can't disagree.
+ *
+ * - `deaths`: the recorded rows. They're the record: a confirmed death stays
+ *   buried even when its mon is no longer in this save's Grave box.
+ * - `pending`: Grave-box mons with no row yet — the "confirm this death" queue.
+ * - `grave`: every recorded death, then every pending one, each with its mon.
+ * - `unsaved`: recorded dead that this save doesn't hold at all, so the
+ *   encounters list can still count where they were caught.
+ * - `deadPids`: anything in either set, for flagging dead encounters.
+ */
+function graveyard(save: ParsedSave, runId: number) {
+  const deaths = LIST_DEATHS.all(runId) as unknown as DeathRow[]
+  const recorded = new Set(deaths.map((d) => d.pid))
+  const inSave = new Map([...save.party, ...save.boxes.flatMap((b) => b.mons)].map((m) => [m.pid, m]))
+
+  const pending = graveMons(save).filter((m) => !recorded.has(m.pid))
+  const unsaved = deaths.filter((d) => !inSave.has(d.pid)).map(monFromDeath)
+  const grave = [
+    ...deaths.map((d) => ({ ...(inSave.get(d.pid) ?? monFromDeath(d)), death: d })),
+    ...pending.map((m) => ({ ...m, death: null })),
+  ]
+  const deadPids = new Set([...recorded, ...pending.map((m) => m.pid)])
+  return { deaths, pending, grave, unsaved, deadPids }
 }
 
 /**
@@ -278,15 +332,13 @@ router.get('/state', (req: Request, res: Response) => {
 
   const run = GET_RUN.get(snapshot.run_id) as unknown as RunRow
   const save = saveFromSnapshot(snapshot)
-  const deaths = LIST_DEATHS.all(run.id) as unknown as DeathRow[]
-  const deathByPid = new Map(deaths.map((d) => [d.pid, d]))
+  const { deaths, pending, grave, unsaved, deadPids } = graveyard(save, run.id)
 
   // Every mon caught this run, grouped by where it was met — the free half of
-  // encounter tracking. Grave-box mons stay in the list under a `dead` flag
-  // rather than vanishing: the encounter still happened, it just didn't last.
+  // encounter tracking. The dead stay in the list under a `dead` flag rather
+  // than vanishing: the encounter still happened, it just didn't last.
   // Losses (fled, dupe-skipped, KO'd before the ball) are logged by hand.
-  const graveIds = new Set(graveMons(save).map((m) => m.pid))
-  const caught = [...save.party, ...save.boxes.flatMap((b) => b.mons)]
+  const caught = [...save.party, ...save.boxes.flatMap((b) => b.mons), ...unsaved]
   const byLocation = new Map<string, (Mon & { dead: boolean })[]>()
   for (const mon of caught) {
     // A starter is a gift, not a route encounter — it's met on Route 201 and
@@ -294,7 +346,7 @@ router.get('/state', (req: Request, res: Response) => {
     // encounters came from there.
     const where = isStarter(mon) ? STARTER_GROUP : mon.metLocation
     const list = byLocation.get(where) ?? []
-    list.push({ ...mon, dead: graveIds.has(mon.pid) })
+    list.push({ ...mon, dead: deadPids.has(mon.pid) })
     byLocation.set(where, list)
   }
 
@@ -314,8 +366,8 @@ router.get('/state', (req: Request, res: Response) => {
     },
     party: save.party,
     boxes: save.boxes.filter((b) => b.mons.length > 0),
-    grave: graveMons(save).map((m) => ({ ...m, death: deathByPid.get(m.pid) ?? null })),
-    pending: pendingDeaths(save, run.id),
+    grave,
+    pending,
     deaths,
     encounters: {
       byLocation: [...byLocation.entries()]
@@ -372,20 +424,20 @@ router.post('/save', (req: Request, res: Response) => {
     save.saveCounter,
   )
 
+  const dead = graveyard(save, run.id)
   res.status(201).json({
     snapshotId: Number(result.lastInsertRowid),
-    run: { ...run, deaths: (LIST_DEATHS.all(run.id) as unknown as DeathRow[]).length },
+    run: { ...run, deaths: dead.deaths.length },
     newRun: created,
     badges: save.badges,
     levelCap: save.levelCap,
     playtime: save.playtime,
     overCap: save.party.filter((m) => m.level > save.levelCap).map((m) => m.nickname),
-    pending: pendingDeaths(save, run.id),
+    pending: dead.pending,
   })
 })
 
 // Dex for the client's species pickers (logging a lost encounter, etc.).
-const SPECIES_LIST = speciesList()
 router.get('/species', (_req: Request, res: Response) => {
   res.json(SPECIES_LIST)
 })

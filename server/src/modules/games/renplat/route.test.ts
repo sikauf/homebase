@@ -124,6 +124,27 @@ describe('renplat save parsing', () => {
     assert.equal(save.party.length, 1)
   })
 
+  // The bug that hid a fresh death: saving without touching the PC rewrites only
+  // the general block, so the newest storage block sat in the other slot and the
+  // parser, reading both from one slot, served a PC with no mon in the Grave box.
+  it('picks the general and storage blocks independently', () => {
+    const grave = { index: 17, name: 'GRAVE', mons: [{ pid: 0x4242, species: 74, exp: 2700 }] }
+    const save = parseSave(
+      buildSave(
+        { badges: 2, counter: 29, storageCounter: 30, party: [monferno], boxes: [grave] },
+        { badges: 3, counter: 30, storageCounter: 29, party: [monferno], boxes: [] },
+      ),
+    )
+    assert.equal(save.badges, 3, 'general block from the slot with the newer general counter')
+    assert.deepEqual(graveMons(save).map((m) => m.pid), [0x4242], 'storage block from the other slot')
+  })
+
+  it('ignores a block whose CRC does not match', () => {
+    const buf = buildSave({ badges: 1, counter: 1, party: [monferno] }, { badges: 3, counter: 2, party: [monferno] })
+    buf[0x40000 + 0x82] ^= 0xff // corrupt slot 1's badge byte without fixing its CRC
+    assert.equal(parseSave(buf).badges, 1, 'falls back to the intact slot')
+  })
+
   it('rejects a buffer that is not a Platinum save', () => {
     assert.throws(() => parseSave(Buffer.alloc(524288)), /No valid save slot/)
     assert.throws(() => parseSave(Buffer.alloc(64)), /512KB/)
@@ -583,6 +604,38 @@ describe('deaths', () => {
 
     const after = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
     assert.equal(after.pending.length, 1, 'deleting the death makes it pending again')
+  })
+
+  it('keeps a recorded death in the graveyard and encounters after it leaves the save', async () => {
+    const trainer = { trainerId: 4022, secretId: 22 }
+    const geodude = { pid: 0x779, species: 74, exp: 2700, metLocation: 50 }
+    await upload({ ...trainer, counter: 1, boxes: [{ index: 8, name: 'Grave', mons: [geodude] }] })
+    const runId = await currentRunId(4022)
+    await json('/deaths', 'POST', {
+      run_id: runId, pid: 0x779, species: 74, nickname: 'ROCKY', level: 16, met_location: 'Mt. Coronet',
+    })
+    // Released from the Grave box afterwards: the save no longer holds it at all.
+    await upload({ ...trainer, counter: 2, playtime: { hours: 1, minutes: 0, seconds: 0 }, party: [monferno] })
+
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    assert.deepEqual(state.grave.map((m: { nickname: string }) => m.nickname), ['ROCKY'])
+    assert.equal(state.grave[0].name, 'Geodude')
+    assert.equal(state.pending.length, 0)
+    const coronet = state.encounters.byLocation.find((g: { location: string }) => g.location === 'Mt. Coronet')
+    assert.deepEqual(coronet.mons.map((m: { dead: boolean }) => m.dead), [true], 'still counts as a dead encounter')
+  })
+
+  it('lists recorded deaths before unconfirmed Grave-box mons', async () => {
+    await upload({
+      trainerId: 4023,
+      secretId: 23,
+      boxes: [{ index: 8, name: 'grave', mons: [{ pid: 0x780, species: 74, exp: 2700 }, { pid: 0x781, species: 399, exp: 2700 }] }],
+    })
+    const runId = await currentRunId(4023)
+    await json('/deaths', 'POST', { run_id: runId, pid: 0x781, species: 399 })
+    const state = (await (await fetch(api(`/state?run=${runId}`))).json()) as Record<string, any>
+    assert.deepEqual(state.grave.map((m: { pid: number }) => m.pid), [0x781, 0x780])
+    assert.deepEqual(state.pending.map((m: { pid: number }) => m.pid), [0x780], 'box name matched case-insensitively')
   })
 })
 

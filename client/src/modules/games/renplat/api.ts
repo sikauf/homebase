@@ -28,7 +28,7 @@ export interface Mon {
   evs: Record<string, number>
 }
 
-/** A caught mon as the encounters view sees it: `dead` once it's in the Grave box. */
+/** A caught mon as the encounters view sees it: `dead` once it's in the Grave box or has a recorded death. */
 export type EncounterMon = Mon & { dead: boolean }
 
 export interface Death {

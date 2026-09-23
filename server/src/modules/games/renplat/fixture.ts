@@ -3,6 +3,8 @@
 // decoding in save.ts means the tests exercise the actual crypto path instead of
 // trusting a committed binary blob.
 
+import { crc16 } from './save'
+
 const SLOT_SIZE = 0x40000
 const GENERAL_SIZE = 0xcf2c
 const STORAGE_SIZE = 0x121e4
@@ -114,6 +116,16 @@ export interface SaveSpec {
   /** Box index (0-17) -> name, plus the mons inside it. */
   boxes?: { index: number; name: string; mons: MonSpec[] }[]
   counter?: number
+  /** The storage block's own counter; defaults to `counter`. The game only rewrites
+   *  storage when the PC changed, so real saves often have the two out of step. */
+  storageCounter?: number
+}
+
+/** Stamp a block's footer: counter, size, and the CRC the parser checks. */
+function writeFooter(buf: Buffer, offset: number, size: number, counter: number): void {
+  buf.writeUInt32LE(counter, offset + size - 0x14)
+  buf.writeUInt32LE(size, offset + size - 0xc)
+  buf.writeUInt16LE(crc16(buf.subarray(offset, offset + size - 0x14)), offset + size - 0x2)
 }
 
 function writeSlot(buf: Buffer, slot: number, spec: SaveSpec, counter: number): void {
@@ -136,9 +148,7 @@ function writeSlot(buf: Buffer, slot: number, spec: SaveSpec, counter: number): 
     encodeMon(mon, true).copy(buf, general + 0xa0 + i * PARTY_MON_SIZE)
   })
 
-  // Footer: block size then save counter, both read back by the parser.
-  buf.writeUInt32LE(GENERAL_SIZE, general + GENERAL_SIZE - 0xc)
-  buf.writeUInt32LE(counter, general + GENERAL_SIZE - 0x14)
+  writeFooter(buf, general, GENERAL_SIZE, counter)
 
   const namesAt = storage + 0x04 + 18 * 30 * BOX_MON_SIZE
   for (let b = 0; b < 18; b++) writeString(buf, namesAt + b * 40, `BOX ${b + 1}`, 20)
@@ -149,8 +159,7 @@ function writeSlot(buf: Buffer, slot: number, spec: SaveSpec, counter: number): 
     })
   }
 
-  buf.writeUInt32LE(STORAGE_SIZE, storage + STORAGE_SIZE - 0xc)
-  buf.writeUInt32LE(counter, storage + STORAGE_SIZE - 0x14)
+  writeFooter(buf, storage, STORAGE_SIZE, spec.storageCounter ?? counter)
 }
 
 /** A 512KB save. `slot1` fills the second slot, for save-counter/validity tests. */
