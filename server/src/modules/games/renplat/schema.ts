@@ -343,4 +343,15 @@ export const migrations: Migration[] = [
       ).run('darach-castle-valet', 'Castle Valet Darach', null, 5, 615, null)
     },
   },
+  {
+    // The Ace Trainer double outside Snowpoint Temple, the last hurdle before
+    // Candice — between Mars at Lake Verity (710) and Candice (720).
+    id: 'renplat_fight_ace_trainer_snowpoint_v1',
+    up: (db) => {
+      db.prepare(
+        `INSERT OR IGNORE INTO renplat_fight (key, name, location, badge_index, sort_order, badge_award)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run('ace-trainer-snowpoint-temple', 'Ace Trainers (double)', 'Outside Snowpoint Temple', 6, 715, null)
+    },
+  },
 ]
