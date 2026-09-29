@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as api from './api'
-import type { Species, State } from './api'
+import type { EncounterMon, Species, State } from './api'
 import { Sprite } from './MonCard'
 import { byName, OUTCOME_LABELS, SINNOH_LOCATIONS } from './data'
 
@@ -99,45 +99,9 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
           {encounters.byLocation.length} {encounters.byLocation.length === 1 ? 'location' : 'locations'}
         </SectionLabel>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
-          {caught.map((entry) => {
-            // A location only greys out once nothing it gave you is left alive.
-            const allDead = entry.mons.every((m) => m.dead)
-            const buried = entry.mons.filter((m) => m.dead).length
-            return (
-              <div
-                key={entry.location}
-                className="rounded-lg px-2 py-1.5 flex items-center gap-2 min-w-0"
-                style={{
-                  background: allDead ? '#151515' : '#1a1a1a',
-                  border: `1px solid rgba(255,255,255,${allDead ? '0.04' : '0.06'})`,
-                }}
-              >
-                <div className="flex shrink-0 -space-x-3">
-                  {entry.mons.slice(0, 3).map((m) => (
-                    <Sprite key={m.pid} species={m.species} size={56} dead={m.dead} />
-                  ))}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div
-                    className="text-xs truncate"
-                    style={{ color: `rgba(255,255,255,${allDead ? '0.4' : '0.75'})` }}
-                  >
-                    {entry.location}
-                  </div>
-                  <div
-                    className="text-[10px] truncate"
-                    style={{ color: `rgba(255,255,255,${allDead ? '0.22' : '0.3'})` }}
-                  >
-                    {entry.mons.length > 1
-                      ? `${entry.mons.length} caught${buried ? ` · ${buried} dead` : ''}`
-                      : `${entry.mons[0].nickname} · Lv ${entry.mons[0].level}${
-                          entry.mons[0].dead ? ' · dead' : ''
-                        }`}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+          {caught.map((entry) => (
+            <CaughtCard key={entry.location} location={entry.location} mons={entry.mons} />
+          ))}
           {encounters.byLocation.length === 0 && <Empty>Nothing caught yet.</Empty>}
         </div>
       </div>
@@ -259,6 +223,52 @@ export default function Encounters({ encounters, graveLocations, onLog, onDelete
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * One location's catches. The nickname is what you actually remember a mon by,
+ * so it leads at full size; species and level sit beneath it. Every mon gets its
+ * own row — a location that gave you two shouldn't hide either name.
+ */
+function CaughtCard({ location, mons }: { location: string; mons: EncounterMon[] }) {
+  // A location only greys out once nothing it gave you is left alive.
+  const allDead = mons.every((m) => m.dead)
+  return (
+    <div
+      className="rounded-lg px-2.5 py-2 flex flex-col gap-1 min-w-0"
+      style={{
+        background: allDead ? '#151515' : '#1a1a1a',
+        border: `1px solid rgba(255,255,255,${allDead ? '0.04' : '0.06'})`,
+      }}
+    >
+      <div
+        className="text-[10px] uppercase tracking-wider truncate"
+        style={{ color: `rgba(255,255,255,${allDead ? '0.25' : '0.4'})` }}
+      >
+        {location}
+      </div>
+      {mons.map((m) => (
+        <div key={m.pid} className="flex items-center gap-2 min-w-0">
+          <Sprite species={m.species} size={48} dead={m.dead} />
+          <div className="min-w-0 flex-1">
+            <div
+              className={`text-sm font-semibold truncate ${m.dead ? 'line-through' : ''}`}
+              style={{ color: m.dead ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.95)' }}
+              title={m.nickname}
+            >
+              {m.nickname}
+            </div>
+            <div
+              className="text-[11px] truncate"
+              style={{ color: `rgba(255,255,255,${m.dead ? '0.3' : '0.5'})` }}
+            >
+              {[m.nickname !== m.name && m.name, `Lv ${m.level}`, m.dead && 'dead'].filter(Boolean).join(' · ')}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
